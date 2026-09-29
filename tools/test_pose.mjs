@@ -2,7 +2,7 @@
 import { Surface, ramp } from '../src/pix/gfx.js';
 import { writePNG, upscale } from '../src/pix/png.js';
 import { build } from '../src/rig/humanoid.js';
-import { render, camera } from '../src/rig/sdf.js';
+import { render, camera, oblique } from '../src/rig/sdf.js';
 import { drawFace } from '../src/rig/face.js';
 import { pose } from '../src/rig/poses.js';
 const [,, name, pname, yawS, zS, kS] = process.argv;
@@ -14,7 +14,7 @@ const S = new Surface(W, H); S.clear(bg[1]);
 yaws.forEach((yaw, i) => {
   const P = pose(D, pname, { yaw });
   const rig = build(D, P);
-  const R = render(S, rig.fig, { x: Math.round(cw / 2 + i * cw), y: Math.round(84 * zoom), zoom, mats: D.mats, cam: camera(8) });
+  const R = render(S, rig.fig, { x: Math.round(cw / 2 + i * cw), y: Math.round(84 * zoom), zoom, mats: D.mats, cam: oblique(0.45) });
   drawFace(S, R, rig, D, P.face);
 });
 writePNG('build/test_pose.png', W * k, H * k, upscale(W, H, S.toRGB(), k));

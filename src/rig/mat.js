@@ -13,7 +13,7 @@ export function material(name, base, o = {}) {
     name, ramp, base,
     tones: o.tones ?? [2, 3, 4], th: o.th ?? [0.46, 0.8],
     spec: o.spec, specTh: o.specTh, edge: o.edge, edgeWith: o.edgeWith, amb: o.amb, dif: o.dif, dither: o.dither,
-    innerLine: o.innerLine, selout: o.selout,
+    innerLine: o.innerLine, selout: o.selout, strands: o.strands, hi: o.hi, hiTh: o.hiTh, ditherZ: o.ditherZ,
   };
 }
 

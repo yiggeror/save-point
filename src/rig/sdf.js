@@ -100,10 +100,23 @@ export class Figure {
 // ------------------------------------------------------------------ camera
 export function camera(pitch = 8) {
   const s = Math.sin(pitch * Math.PI / 180), c = Math.cos(pitch * Math.PI / 180);
-  return { f: [0, -s, -c], u: [0, c, -s], r: [1, 0, 0], back: [0, s, c] };
+  const cam = { f: [0, -s, -c], u: [0, c, -s], r: [1, 0, 0], back: [0, s, c] };
+  cam.org = (sx, sy, D) => [sx, -c * sy + s * D, s * sy + c * D];
+  return cam;
+}
+/**
+ * The set's oblique projection (the one the whole shop is drawn in): screen x = X, screen y = −Y + k·Z.
+ * Heights keep their full size, depth rises up the screen at k px per unit, the way a 16-bit RPG draws its rooms.
+ * Figures rendered with it stand, sit and put their hands on things exactly where the set draws them.
+ */
+export function oblique(k = 0.45) {
+  const L = Math.hypot(1, k), f = [0, -k / L, -1 / L], back = [0, k / L, 1 / L];
+  const cam = { f, back, u: [0, 1, -k], r: [1, 0, 0], k };
+  cam.org = (sx, sy, D) => [sx, -sy + back[1] * D, back[2] * D];
+  return cam;
 }
 /** project a local point to local screen coords (x right, y down, in character units) + depth toward camera */
-export const project = (cam, p) => [p[0], -(p[1] * cam.u[1] + p[2] * cam.u[2]), p[1] * cam.back[1] + p[2] * cam.back[2]];
+export const project = (cam, p) => [p[0], -(p[1] * cam.u[1] + p[2] * cam.u[2]), p[0] * cam.back[0] + p[1] * cam.back[1] + p[2] * cam.back[2]];
 
 // ------------------------------------------------------------------ rendering
 /**
@@ -185,7 +198,7 @@ export function render(S, fig, opt) {
     if (!cand.length) continue;
     const sx = (x0 + px + 0.5 - opt.x) / zoom, sy = (y0 + py + 0.5 - opt.y) / zoom;
     // origin: screen point pushed toward the camera
-    const ox = r[0] * sx - u[0] * sy + back[0] * DEP, oy = r[1] * sx - u[1] * sy + back[1] * DEP, oz = r[2] * sx - u[2] * sy + back[2] * DEP;
+    const [ox, oy, oz] = cam.org(sx, sy, DEP);
     let t = DEP - 80, hit = false, x = 0, y = 0, z = 0;
     for (let i = 0; i < 96; i++) {
       x = ox + f[0] * t; y = oy + f[1] * t; z = oz + f[2] * t;
@@ -215,15 +228,28 @@ export function render(S, fig, opt) {
     const M = mats[R.mat[k]] || mats[0];
     let v = (M.amb ?? 0.32) + (M.dif ?? 0.72) * Math.max(0, ndl * 0.85 + 0.15);
     v *= 0.55 + 0.45 * occ;
-    // choose a tone (whole ramp step); optional dither band at the thresholds
+    // hair and beards: strands (close-ups only) — radial streaks from the owning shape's centre
+    if (M.strands && zoom >= 2) {
+      const c = p.c, a = Math.atan2(y - c[1], x - c[0]) + Math.atan2(z - c[2], 3) * 0.35;
+      const st = Math.sin(a * (M.strands) + Math.sin(a * 3.1) * 1.3);
+      if (st > 0.72) v -= 0.16; else if (st < -0.9) v += 0.08;
+    }
+    // choose a tone (whole ramp step); close-ups get a dither band at the thresholds, like hand-shaded portraits
     const th = M.th || [0.38, 0.62, 0.9];
-    const band = M.dither || 0, bx = bayer(x0 + px, y0 + py) - 0.5;
+    const band = zoom >= 2 ? (M.ditherZ ?? 0.07) : (M.dither || 0), bx = bayer(x0 + px, y0 + py) - 0.5;
     let tone = 0;
     for (let i = 0; i < th.length; i++) if (v + bx * band > th[i]) tone = i + 1;
+    // reflected light on the shadow side (warm bounce from below/behind), so round forms turn
+    const fill = [-L[0] * 0.75, -0.45, -0.35];
+    const fl = dot(n, norm(fill));
+    if (tone === 0 && fl > (zoom >= 2 ? 0.5 : 0.62) && ndl < 0.05) tone = 1;
     let level = M.tones[Math.min(tone, M.tones.length - 1)];
+    // a top highlight on the most lit spots of skin and cloth in close-ups
+    if (zoom >= 2.5 && M.hi !== false && tone >= th.length && v + bx * 0.05 > (M.hiTh ?? 1.0)) level = Math.min(M.ramp.length - 1, level + 1);
     if (M.spec != null && dot(n, H) > (M.specTh ?? 0.94) && ndl > 0.2) level = M.spec;
     R.lvl[k] = level;
   }
+  R.S = S; R.groups = groups;
   finish(S, R, mats, opt);
   return R;
 }
@@ -231,6 +257,7 @@ export function render(S, fig, opt) {
 // ------------------------------------------------------------------ outlines, cleanup and output
 function finish(S, R, mats, opt) {
   const { w: W, h: H, hit } = R;
+  const groupsAt = R.groups.map((g) => g.attach);
   const at = (x, y) => (x < 0 || y < 0 || x >= W || y >= H ? 0 : hit[y * W + x]);
   // 1. silhouette cleanup: drop pixels hanging on by one side, fill one-pixel notches
   for (let pass = 0; pass < 2; pass++) {
@@ -261,7 +288,13 @@ function finish(S, R, mats, opt) {
       if (!at(X, Y)) { outer = true; break; }
       const q = Y * W + X;
       const dz = R.depth[k] - R.depth[q];
-      if (dz > LINE_DEPTH && R.grp[k] !== R.grp[q] || dz > LINE_DEPTH * 2.2) inner = true;
+      if (dz > LINE_DEPTH * 2.2) inner = true;
+      else if (R.grp[k] !== R.grp[q] && dz > (opt.groupLine ?? 0.9)) {
+        // a limb against the body: draw the line, except inside the joint's melt zone (no seam at the shoulder)
+        const px3 = R.pos[k * 3], py3 = R.pos[k * 3 + 1], pz3 = R.pos[k * 3 + 2];
+        const near = (g) => { const at = groupsAt[g]; return at && Math.hypot(px3 - at.J[0], py3 - at.J[1], pz3 - at.J[2]) < at.R * 1.15; };
+        if (!near(R.grp[k]) && !near(R.grp[q])) inner = true;
+      }
       const mk = mats[R.mat[k]], mq = mats[R.mat[q]];
       if (R.mat[k] !== R.mat[q] && mk?.edge && !(mq?.edge && R.depth[q] > R.depth[k] + 0.3) && (mk.edgeWith ? mk.edgeWith.includes(R.mat[q]) : true)) inner = true;
     }
@@ -288,6 +321,11 @@ function finish(S, R, mats, opt) {
     const c = M.ramp[Math.max(0, Math.min(M.ramp.length - 1, lv))];
     const X = R.x0 + x, Y = R.y0 + y;
     if (opt.mask && !opt.mask(X, Y)) continue;
+    // depth against the set (counter tops, benches, foreground): world Z of this pixel
+    if (S.zb && opt.z != null) {
+      const si = Y * S.w + X, wz = opt.z + R.pos[k * 3 + 2];
+      if (si >= 0 && si < S.w * S.h && wz < S.zb[si] - (opt.zTol ?? 0.35)) continue;
+    }
     const pre = S.curId; S.curId = opt.id || 0; S.set(X - S.ox, Y - S.oy, c); S.curId = pre;
   }
   R.line = line;

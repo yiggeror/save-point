@@ -8,8 +8,8 @@ import { mm, rotZ, rotY, rotX, add, apply } from '../rig/m3.js';
 const { mats, M } = materials('kB', {
   skin:   ['#e3a58a', { r: { cool: 15, shift: 0.3, o0: 0.3, o1: 0.45 } }],
   nose:   ['#df9a82', { r: { cool: 10, shift: 0.3, o0: 0.3, o1: 0.45 } }],
-  hair:   ['#a7a6ad', { edge: true, spec: 5, specTh: 0.93, r: { cool: 275, shift: 0.35, dH: 0.12 } }],
-  top:    ['#8a3240', { edge: true }],
+  hair:   ['#a7a6ad', { strands: 14, edge: true, spec: 5, specTh: 0.93, r: { cool: 275, shift: 0.35, dH: 0.12 } }],
+  top:    ['#8a3240', { edge: true, ditherZ: 0.03 }],
   sleeve: ['#efe9de', { r: { dS: 0.12 } }],
   shirt:  ['#efe9de', { r: { dS: 0.12 } }],
   pants:  ['#474a5c', {}],

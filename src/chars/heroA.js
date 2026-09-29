@@ -8,7 +8,7 @@ import { strip, strand, drape } from '../rig/cloth.js';
 export function heroMaterials(prefix, c) {
   return materials(prefix, {
     skin:   [c.skin, { r: { cool: 15, shift: 0.3, o0: 0.3, o1: 0.45 } }],
-    hair:   [c.hair, { spec: 5, specTh: 0.9, edge: true, r: { cool: 330, shift: 0.3, dH: 0.12 } }],
+    hair:   [c.hair, { strands: 12, spec: 5, specTh: 0.9, edge: true, r: { cool: 330, shift: 0.3, dH: 0.12 } }],
     top:    [c.top, {}],
     sleeve: [c.top, {}],
     pants:  [c.pants, {}],
@@ -22,10 +22,7 @@ export function heroMaterials(prefix, c) {
   });
 }
 
-const COL = { skin: '#f0b48e', hair: '#e8622c', top: '#3f73b8', pants: '#d9c9a3', shoe: '#7a4a2c', glove: '#8c5a33', belt: '#5c3a24', buckle: '#e3b448', cape: '#c73a3f', band: '#2e4f8f', collar: '#f2e7cf' };
-const { mats, M } = heroMaterials('hA', COL);
-M.hand = M.glove;
-const FP = ramp('hA.face', ['#26141a', '#5b2a2a', '#ffffff', '#3a5d9a', '#b0413e', '#6e1f24', '#e86a78']);
+export const COL_A = { skin: '#f0b48e', hair: '#e8622c', top: '#3f73b8', pants: '#d9c9a3', shoe: '#7a4a2c', glove: '#8c5a33', belt: '#5c3a24', buckle: '#e3b448', cape: '#c73a3f', band: '#2e4f8f', collar: '#f2e7cf' };
 
 export function heroBody(M, extra = {}) {
   return {
@@ -62,55 +59,63 @@ export function spikyHair(k, M, o = {}) {
   ];
   for (const [b, t, r] of spikes) fig.add(cone(at(H, hc, b), at(H, hc, add(t, sway)), r, 0.35, { g, m: M.hair, k: 1.4, part: 6 }));
   // fringe
-  const fr = o.fringe || [[[1.8, 6.4, 3.8], [3.6, 2.6, 8.3], 1.7], [[-1.4, 6.6, 4], [-2.4, 2.4, 8.4], 1.7], [[0.2, 7, 4.2], [0.8, 3.3, 8.6], 1.5], [[4.8, 5.6, 2.6], [7.4, 3.2, 5.0], 1.6], [[-4.8, 5.6, 2.6], [-7.2, 3.0, 5.0], 1.6]];
+  const fr = o.fringe || [[[1.8, 7.4, 3.2], [3.6, 3.0, 8.3], 1.7], [[-1.4, 7.6, 3.4], [-2.4, 2.8, 8.4], 1.7], [[0.2, 8, 3.6], [0.8, 3.6, 8.6], 1.5], [[4.8, 5.6, 2.6], [7.4, 3.2, 5.0], 1.6], [[-4.8, 5.6, 2.6], [-7.2, 3.0, 5.0], 1.6]];
   for (const [b, t, r] of fr) fig.add(cone(at(H, hc, b), at(H, hc, t), r, 0.3, { g, m: M.hair, k: 1.1, part: 6 }));
 }
 
-export const heroA = {
-  id: 'heroA', name: '刺头', mats, M,
-  ...heroBody(M),
-  face: { eye: [3.0, 0.3, 7.0], mouth: [0, -4.3, 6.6], eyeW: 2, eyeH: 3, brow: [3.0, 3.2, 7.2], browL: 3, showMouth: true, mouthW: 2,
-    pal: { ink: FP[0], lid: FP[1], white: FP[2], iris: FP[3], mouthLine: FP[1], mouthIn: FP[5], tongue: FP[6], brow: FP[0] } },
-  hair(k) {
-    spikyHair(k, M);
-    const { S, fig, at, ell } = k, H = S.headF, hc = S.head, g = k.g.head;
-    // headband over the hair, knotted at the back with two tails
-    fig.add(ell(at(H, hc, [0, 0.6, -0.4]), mm(H, rotX(-8)), [8.95, 8.8, 8.55], {
-      g, m: M.band, k: 0, part: 7,
-      clip: [[apply(mm(H, rotX(-8)), [0, 1, 0]), at(H, hc, [0, 5.4, 0])], [apply(mm(H, rotX(-8)), [0, -1, 0]), at(H, hc, [0, 3.5, 0])]],
-    }));
-    const knot = at(H, hc, [0, 4.4, -8.4]);
-    fig.add(ell(knot, H, [1.6, 1.3, 1.2], { g, m: M.band, k: 0.4, part: 7 }));
-    const down = [0, -1, 0], back = apply(k.S.root, [0, 0, -1]);
-    for (const s of [1, -1]) {
-      const pts = [knot];
-      let p = knot;
-      for (let i = 1; i <= 4; i++) { p = add(p, add(mul(down, 2.1), add(mul(back, 1.3 - i * 0.2), apply(k.S.root, [s * (0.9 - i * 0.1), 0, 0])))); pts.push(p); }
-      strip(fig, pts, [1.9, 1.8, 1.7, 1.6, 1.3], apply(k.S.root, [0, 0, -1]), { g, m: M.band, thick: 0.6, part: 7 });
-    }
-  },
-  clothes(k) {
-    const { S, fig, at, ell, box, cone } = k, C = S.chestF, P = S.pelvisF;
-    const g = fig.group('gear', { parent: 'torso', J: S.chest, R: 1, k: 0 });
-    // belt with a buckle
-    const bc = at(P, S.waist, [0, -1.6, 0]);
-    fig.add(ell(bc, P, [6.9, 1.4, 5.9], { g, m: M.belt, k: 0, part: 32 }));
-    fig.add(box(at(P, bc, [0, 0, 5.6]), P, [1.3, 1.1, 0.5], 0.3, { g, m: M.buckle, k: 0, part: 33 }));
-    // tunic skirt: flares a little over the hips
-    fig.add(ell(at(P, S.pelvis, [0, -1.0, 0]), P, [6.8, 5.2, 5.8], { g: k.g.torso, m: M.top, k: 1.5, part: 0, clip: [[apply(P, [0, -1, 0]), at(P, S.pelvis, [0, -4.6, 0])]] }));
-    // collar
-    fig.add(ell(at(C, S.chest, [0, 4.6, 0]), C, [4.2, 1.4, 3.8], { g, m: M.collar, k: 0.5, part: 34 }));
-    // cape: pleated, from the back of the shoulders down to the backs of the knees
-    const R = k.S.root, back = apply(R, [0, 0, -1]);
-    const flare = k.capeFlare ?? 1;
-    const n = 5, top = [], bot = [];
-    for (let i = 0; i < n; i++) {
-      const u = i / (n - 1) * 2 - 1;
-      top.push(at(C, S.chest, [u * 5.2, 3.9 - Math.abs(u) * 0.8, -5.0 + Math.abs(u) * 1.2]));
-      bot.push(add(at(R, [0, 0, 0], [u * 7.4, 0, 0]), add([0, S.pelvis[1] - 13.5 + Math.abs(u) * 0.8, 0], add(mul(back, 6.2 + flare * 1.2 - Math.abs(u) * 1.2), [S.pelvis[0], 0, S.pelvis[2]]))));
-    }
-    drape(fig, top, bot, back, { g: fig.group('cape', { parent: 'torso', J: top[2], R: 1, k: 0 }), m: M.cape, thick: 0.9, part: 42, k: 1.4, pleat: 14 });
-    // clasps
-    for (const s of [1, -1]) fig.add(ell(at(C, S.chest, [s * 5.0, 3.6, 1.8]), C, [1.1, 1.1, 0.8], { g, m: M.buckle, k: 0, part: 33 }));
-  },
-};
+export function makeHeroA(prefix = 'hA', COL = COL_A, o = {}) {
+  const { mats, M } = heroMaterials(prefix, COL);
+  M.hand = M.glove;
+  const FP = ramp(prefix + '.face', ['#26141a', '#5b2a2a', '#ffffff', o.iris || '#3a5d9a', '#b0413e', '#6e1f24', '#e86a78']);
+  return {
+    id: o.id || 'heroA', name: '刺头', mats, M,
+    ...heroBody(M),
+    face: { eye: [3.0, 0.3, 7.0], mouth: [0, -4.3, 6.6], eyeW: 2, eyeH: 3, brow: [3.0, 3.2, 7.2], browL: 3, showMouth: true, mouthW: 2,
+      pal: { ink: FP[0], lid: FP[1], white: FP[2], iris: FP[3], mouthLine: FP[1], mouthIn: FP[5], tongue: FP[6], brow: FP[0] } },
+    hair(k) {
+      if (o.hair) return o.hair(k, M);
+      spikyHair(k, M);
+      const { S, fig, at, ell } = k, H = S.headF, hc = S.head, g = k.g.head;
+      // headband high on the forehead, over the hair, knotted at the back with two tails
+      const HB = mm(H, rotX(-14));
+      fig.add(ell(at(H, hc, [0, 0.9, -0.5]), HB, [9.0, 8.9, 8.7], {
+        g, m: M.band, k: 0, part: 7,
+        clip: [[apply(HB, [0, 1, 0]), at(H, hc, [0, 7.0, 0])], [apply(HB, [0, -1, 0]), at(H, hc, [0, 5.6, 0])]],
+      }));
+      const knot = at(H, hc, [0, 3.6, -8.8]);
+      fig.add(ell(knot, H, [1.6, 1.3, 1.2], { g, m: M.band, k: 0.4, part: 7 }));
+      const down = [0, -1, 0], back = apply(k.S.root, [0, 0, -1]);
+      for (const s of [1, -1]) {
+        const pts = [knot];
+        let p = knot;
+        for (let i = 1; i <= 4; i++) { p = add(p, add(mul(down, 2.1), add(mul(back, 1.3 - i * 0.2), apply(k.S.root, [s * (0.9 - i * 0.1), 0, 0])))); pts.push(p); }
+        strip(fig, pts, [1.9, 1.8, 1.7, 1.6, 1.3], apply(k.S.root, [0, 0, -1]), { g, m: M.band, thick: 0.6, part: 7 });
+      }
+    },
+    clothes(k) {
+      const { S, fig, at, ell, box, cone } = k, C = S.chestF, P = S.pelvisF;
+      const g = fig.group('gear', { parent: 'torso', J: S.chest, R: 1, k: 0 });
+      // belt with a buckle
+      const bc = at(P, S.waist, [0, -1.6, 0]);
+      fig.add(ell(bc, P, [6.9, 1.4, 5.9], { g, m: M.belt, k: 0, part: 32 }));
+      fig.add(box(at(P, bc, [0, 0, 5.6]), P, [1.3, 1.1, 0.5], 0.3, { g, m: M.buckle, k: 0, part: 33 }));
+      // tunic skirt: flares a little over the hips
+      fig.add(ell(at(P, S.pelvis, [0, -1.0, 0]), P, [6.8, 5.2, 5.8], { g: k.g.torso, m: M.top, k: 1.5, part: 0, clip: [[apply(P, [0, -1, 0]), at(P, S.pelvis, [0, -4.6, 0])]] }));
+      // collar
+      fig.add(ell(at(C, S.chest, [0, 4.6, 0]), C, [4.2, 1.4, 3.8], { g, m: M.collar, k: 0.5, part: 34 }));
+      // cape: pleated, from the back of the shoulders down to the backs of the knees
+      const R = k.S.root, back = apply(R, [0, 0, -1]);
+      const flare = k.capeFlare ?? 1;
+      const n = 5, top = [], bot = [];
+      for (let i = 0; i < n; i++) {
+        const u = i / (n - 1) * 2 - 1;
+        top.push(at(C, S.chest, [u * 5.2, 3.9 - Math.abs(u) * 0.8, -5.0 + Math.abs(u) * 1.2]));
+        bot.push(add(at(R, [0, 0, 0], [u * 7.4, 0, 0]), add([0, S.pelvis[1] - 13.5 + Math.abs(u) * 0.8, 0], add(mul(back, 6.2 + flare * 1.2 - Math.abs(u) * 1.2), [S.pelvis[0], 0, S.pelvis[2]]))));
+      }
+      drape(fig, top, bot, back, { g: fig.group('cape', { parent: 'torso', J: top[2], R: 1, k: 0 }), m: M.cape, thick: 0.9, part: 42, k: 1.4, pleat: 14 });
+      // clasps
+      for (const s of [1, -1]) fig.add(ell(at(C, S.chest, [s * 5.0, 3.6, 1.8]), C, [1.1, 1.1, 0.8], { g, m: M.buckle, k: 0, part: 33 }));
+    },
+  };
+}
+export const heroA = makeHeroA();

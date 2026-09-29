@@ -49,10 +49,13 @@ export class Surface {
     this.fl = new Uint8Array(w * h);             // per-pixel flags
     this.lt = new Int8Array(w * h);              // local light (ramp steps)
     this.id = new Uint8Array(w * h);             // object id (for hit tests, outlines, masks)
+    this.lc = new Uint8Array(w * h);             // light class: 0 ambient, 1 candle, 2 sun (for grading)
+    this.zb = new Float32Array(w * h).fill(-1e9); // world depth (Z toward the camera) of set pieces figures can touch
+    this.curZ = null;                            // when set, drawing also writes this depth (number or fn(x,y))
     this.ox = 0; this.oy = 0;                    // drawing origin
     this.clip = null;                            // [x0,y0,x1,y1] or null
   }
-  clear(c = -1) { this.px.fill(c); this.fl.fill(0); this.lt.fill(0); this.id.fill(0); }
+  clear(c = -1) { this.px.fill(c); this.fl.fill(0); this.lt.fill(0); this.id.fill(0); this.lc.fill(0); this.zb.fill(-1e9); }
   inb(x, y) {
     if (x < 0 || y < 0 || x >= this.w || y >= this.h) return false;
     const c = this.clip; return !c || (x >= c[0] && y >= c[1] && x < c[2] && y < c[3]);
@@ -66,6 +69,7 @@ export class Surface {
     if (c == null || c < 0) return;
     const i = y * this.w + x;
     this.px[i] = c; this.fl[i] = f ?? PAL.flags[c]; if (this.curId) this.id[i] = this.curId;
+    if (this.curZ != null) this.zb[i] = typeof this.curZ === 'function' ? this.curZ(x, y) : this.curZ;
   }
   rect(x, y, w, h, c, f) { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) this.set(x + i, y + j, c, f); }
   hline(x0, x1, y, c, f) { if (x1 < x0) [x0, x1] = [x1, x0]; for (let x = x0; x <= x1; x++) this.set(x, y, c, f); }
@@ -145,7 +149,7 @@ export class Surface {
         const fl = this.fl[i];
         if (!(fl & (EMIT | NOLIGHT)) && this.lt[i]) c = shift(c, this.lt[i]);
         if (o.grade && !(fl & EMIT)) {
-          const key = c * 16 + (o.gradeKey ? o.gradeKey(i) : 0);
+          const key = c * 16 + this.lc[i];
           rgb = cache.get(key);
           if (!rgb) { rgb = o.grade(PAL.rgb[c], i, c); cache.set(key, rgb); }
         } else rgb = PAL.rgb[c];

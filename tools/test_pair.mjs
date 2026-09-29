@@ -2,7 +2,7 @@
 import { Surface, ramp } from '../src/pix/gfx.js';
 import { writePNG, upscale } from '../src/pix/png.js';
 import { build } from '../src/rig/humanoid.js';
-import { render, camera } from '../src/rig/sdf.js';
+import { render, camera, oblique } from '../src/rig/sdf.js';
 import { drawFace } from '../src/rig/face.js';
 const names = process.argv.slice(2).filter((a) => isNaN(+a));
 const nums = process.argv.slice(2).filter((a) => !isNaN(+a)).map(Number);
@@ -16,7 +16,7 @@ for (const n of names) {
   const D = (await import(`../src/chars/${n}.js`))[n];
   for (const yaw of yaws) {
     const rig = build(D, { yaw, face: {} });
-    const R = render(S, rig.fig, { x: Math.round(cw / 2 + i * cw), y: Math.round(74 * zoom), zoom, mats: D.mats, cam: camera(8) });
+    const R = render(S, rig.fig, { x: Math.round(cw / 2 + i * cw), y: Math.round(74 * zoom), zoom, mats: D.mats, cam: oblique(0.45) });
     drawFace(S, R, rig, D, {});
     i++;
   }

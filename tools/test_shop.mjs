@@ -1,0 +1,30 @@
+// node tools/test_shop.mjs [opt] [hour] [scale] → build/test_shop.png  (with the characters placed for scale)
+import { Surface } from '../src/pix/gfx.js';
+import { writePNG, upscale } from '../src/pix/png.js';
+import { drawShop, shopLight, LAYOUT } from '../src/set/shop.js';
+import { grader } from '../src/set/light.js';
+import { build } from '../src/rig/humanoid.js';
+import { render, oblique } from '../src/rig/sdf.js';
+import { drawFace } from '../src/rig/face.js';
+import { pose } from '../src/rig/poses.js';
+import { P } from '../src/set/kit.js';
+const opt = process.argv[2] || 'A', hour = +(process.argv[3] || 7.3), k = +(process.argv[4] || 4);
+const keeper = process.argv[5] || 'keeperA', hero = process.argv[6] || 'heroA';
+const S = new Surface(320, 180); S.clear(0);
+const t0 = Date.now();
+drawShop(S, { opt, hour, t: 3 });
+const cam = oblique(0.45);
+const put = async (name, pname, X, Z, yaw, o = {}) => {
+  const D = (await import(`../src/chars/${name}.js`))[name];
+  const Pz = pose(D, pname, { yaw, ...o });
+  const rig = build(D, Pz);
+  const [x, y] = P(X, 0, Z);
+  const R = render(S, rig.fig, { x, y, z: Z, zoom: 1, mats: D.mats, cam });
+  drawFace(S, R, rig, D, Pz.face);
+};
+if (keeper !== 'none') await put(keeper, 'npcWipe', 262, LAYOUT.keeperZ, 0, { counter: 22 - 0.45 * 0 });
+if (hero !== 'none') await put(hero, 'stand', LAYOUT.heroSpot.x, LAYOUT.heroSpot.z, 55);
+shopLight(S, { hour });
+const rgb = S.toRGB({ grade: grader(hour, S) });
+console.log('ms', Date.now() - t0);
+writePNG('build/test_shop.png', 320 * k, 180 * k, upscale(320, 180, rgb, k));

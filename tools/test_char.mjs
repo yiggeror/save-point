@@ -2,7 +2,7 @@
 import { Surface, ramp } from '../src/pix/gfx.js';
 import { writePNG, upscale } from '../src/pix/png.js';
 import { build } from '../src/rig/humanoid.js';
-import { render, camera } from '../src/rig/sdf.js';
+import { render, camera, oblique } from '../src/rig/sdf.js';
 import { drawFace } from '../src/rig/face.js';
 const name = process.argv[2] || 'keeperA';
 const D = (await import(`../src/chars/${name}.js`))[name];
@@ -15,7 +15,7 @@ const S = new Surface(W, H); S.clear(bg[1]);
 const t0 = Date.now();
 yaws.forEach((yaw, i) => {
   const rig = build(D, { ...PO, yaw, face: E });
-  const R = render(S, rig.fig, { x: Math.round(cw / 2 + i * cw), y: Math.round(70 * zoom), zoom, mats: D.mats, cam: camera(8) });
+  const R = render(S, rig.fig, { x: Math.round(cw / 2 + i * cw), y: Math.round(70 * zoom), zoom, mats: D.mats, cam: oblique(0.45) });
   drawFace(S, R, rig, D, E);
 });
 console.log('render ms', Date.now() - t0);

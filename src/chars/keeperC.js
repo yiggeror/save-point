@@ -7,13 +7,13 @@ import { mm, rotZ, rotY, rotX, add, apply } from '../rig/m3.js';
 const { mats, M } = materials('kC', {
   skin:   ['#d9936f', { r: { cool: 15, shift: 0.3, o0: 0.28, o1: 0.42 } }],
   nose:   ['#d4826a', { r: { cool: 10, shift: 0.3, o0: 0.28, o1: 0.42 } }],
-  hair:   ['#7a5238', { edge: true, r: { cool: 300, shift: 0.3, dH: 0.12 } }],
+  hair:   ['#7a5238', { strands: 14, edge: true, r: { cool: 300, shift: 0.3, dH: 0.12 } }],
   top:    ['#c9924a', {}],
   sleeve: ['#c9924a', {}],
   patch:  ['#8a5e3a', { edge: true }],
   pants:  ['#4f5b4b', {}],
   shoe:   ['#3b2a24', { spec: 5, specTh: 0.96 }],
-  apron:  ['#7b5a40', { edge: true, spec: 5, specTh: 0.97 }],
+  apron:  ['#7b5a40', { edge: true, spec: 5, specTh: 0.97, ditherZ: 0 }],
   cap:    ['#a5443c', { edge: true }],
   shirt:  ['#e6dfcc', { r: { dS: 0.12 } }],
 });
@@ -45,10 +45,10 @@ export const keeperC = {
     }));
     // moustache over the beard
     for (const s of [1, -1]) fig.add(ell(at(H, hc, [s * 2.2, -3.1 + (e.stache ?? 0) * 0.4, 7.9]), mm(H, rotZ(s * -14)), [2.7, 1.3, 1.4], { g, m: M.hair, k: 0.6, part: 5 }));
-    // knitted cap, rolled brim
-    fig.add(ell(at(H, hc, [0, 2.6, -0.4]), H, [8.7, 8.2, 8.4], { g, m: M.cap, k: 0.4, part: 7, clip: [[apply(H, [0, -1, 0]), at(H, hc, [0, 3.2, 0])]] }));
-    fig.add(ell(at(H, hc, [0, 3.4, -0.3]), H, [9.0, 1.5, 8.7], { g, m: M.cap, k: 0.4, part: 7 }));
-    fig.add(ell(at(H, hc, [0, 10.2, -1.6]), H, [2.0, 1.6, 2.0], { g, m: M.cap, k: 1.8, part: 7 }));   // the bobble
+    // a snug knitted cap with a turned-up brim
+    fig.add(ell(at(H, hc, [0, 1.2, -0.5]), H, [8.75, 8.1, 8.45], { g, m: M.cap, k: 0.4, part: 7, clip: [[apply(H, [0, -1, 0]), at(H, hc, [0, 3.6, 0])]] }));
+    fig.add(ell(at(H, hc, [0, 4.3, -0.4]), mm(H, rotX(-4)), [9.15, 1.55, 8.85], { g, m: M.cap, k: 0.3, part: 7 }));
+    fig.add(ell(at(H, hc, [0, 9.3, -0.6]), H, [1.5, 1.2, 1.5], { g, m: M.cap, k: 1.2, part: 7 }));
   },
   clothes(k) {
     const { S, fig, at, ell, box, cone } = k, C = S.chestF, P = S.pelvisF;

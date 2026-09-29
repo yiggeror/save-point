@@ -62,8 +62,7 @@ export function drawFace(S, R, rig, D, E = {}) {
     const [bx0, by0] = [ay[0], -(ay[1] * R.cam.u[1] + ay[2] * R.cam.u[2])];
     eyes.push({ s, X, Y, dz, vis, a: [ax0, ay0], b: [bx0, by0] });
   }
-  const g = guard(R, F.parts || [1], 0, F.tol ?? 1.6);
-  const put = (x, y, c, zRef) => { if (c == null) return; if (guardAt(R, x, y, F.parts || [1], zRef, F.tol ?? 1.6)) S.set(x - S.ox, y - S.oy, c); };
+  const put =(x, y, c, zRef) => { if (c == null) return; if (guardAt(R, x, y, F.parts || [1], zRef, F.tol ?? 1.6)) S.set(x - S.ox, y - S.oy, c); };
 
   // ---------------------------------------------------------------- eyes
   const open = E.open ?? 1, look = E.look || [0, 0];
@@ -105,10 +104,20 @@ export function drawFace(S, R, rig, D, E = {}) {
       }
       continue;
     }
-    ellipseAxes([cx, cy], A, B, (x, y, edge) => put(x, y, pal.ink, e.dz));
-    if (pal.iris != null && w >= 3) ellipseAxes([cx, cy + z * 0.2], sc2(A, 0.62), sc2(B, 0.62), (x, y) => put(x, y, pal.iris, e.dz));
-    if (pal.white != null && w >= 2) {
-      const hx = Math.round(cx - w * fx * 0.18 * e.s - 0.3), hy = Math.round(cy - h * 0.22);
+    const wide = style === 'wide', half = style === 'half';
+    const A2 = wide ? sc2(A, 1.45) : A, B2 = wide ? sc2(B, 1.3) : B;
+    const cutY = half ? cy - Math.abs(B2[1]) * 0.1 : -1e9;          // half-lidded: everything above this is lid
+    ellipseAxes([cx, cy], A2, B2, (x, y, edge) => { if (y + 0.5 >= cutY) put(x, y, pal.ink, e.dz); });
+    if (pal.iris != null && w >= 3) ellipseAxes([cx, cy + z * 0.2], sc2(A2, wide ? 0.45 : 0.62), sc2(B2, wide ? 0.45 : 0.62), (x, y) => { if (y + 0.5 >= cutY + 1) put(x, y, pal.iris, e.dz); });
+    if (half) {   // the heavy upper lid: a flat line across the top of the eye
+      const hw = Math.max(Math.abs(A2[0]), 1) + 0.5;
+      for (let x = Math.round(cx - hw); x <= Math.round(cx + hw) - 1; x++) put(x, Math.round(cutY) - 1, pal.ink, e.dz);
+    }
+    if (wide && pal.white != null && w < 3) {   // bead eyes: a bright catch light when they pop open
+      put(Math.round(cx - 0.5), Math.round(cy - Math.abs(B2[1]) * 0.5), pal.white, e.dz);
+    }
+    if (pal.white != null && w >= 2 && !half) {
+      const hx = Math.round(cx - w * fx * 0.18 * e.s - 0.3), hy = Math.round(cy - h * (wide ? 0.3 : 0.22));
       put(hx, hy, pal.white, e.dz);
       if (z >= 3) { put(hx + 1, hy, pal.white, e.dz); put(hx, hy + 1, pal.white, e.dz); }
     }
@@ -117,6 +126,30 @@ export function drawFace(S, R, rig, D, E = {}) {
       const cut = cy - h / 2 + h * E.lid;
       for (let y = Math.floor(cy - h / 2 - 1); y < cut; y++) for (let x = Math.floor(cx - w); x <= Math.ceil(cx + w); x++)
         if (guardAt(R, x, y, F.parts || [1], e.dz, F.tol ?? 1.6) && S.get(x - S.ox, y - S.oy) === pal.ink) S.set(x - S.ox, y - S.oy, pal.lid ?? pal.ink);
+    }
+  }
+
+  // ---------------------------------------------------------------- lines on the skin (wrinkles, creases): close-ups only
+  if (F.lines && z >= 2) {
+    const skinR = D.mats[D.M.skin].ramp, sk = D.skullR;
+    for (const ln of F.lines) {
+      if (z < (ln.minZoom ?? 2)) continue;
+      const col = skinR[ln.lv ?? 2];
+      for (const s of ln.mirror === false ? [1] : [1, -1]) {
+        const pts = ln.pts.map(([x, y]) => {
+          const u = (s * x) / sk[0], v = y / sk[1];
+          const zz = sk[2] * Math.sqrt(Math.max(0, 1 - u * u - v * v));
+          return toScreen(R, add(hc, apply(H, [s * x, y, zz])));
+        });
+        for (let i = 0; i + 1 < pts.length; i++) {
+          const [x0, y0, d0] = pts[i], [x1, y1] = pts[i + 1];
+          const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0)));
+          for (let k = 0; k <= n; k++) {
+            const t = k / n, X = Math.round(x0 + (x1 - x0) * t - 0.5), Y = Math.round(y0 + (y1 - y0) * t - 0.5);
+            if (guardAt(R, X, Y, [1], d0, 1.8)) S.set(X - S.ox, Y - S.oy, col);
+          }
+        }
+      }
     }
   }
 
@@ -164,7 +197,16 @@ export function drawFace(S, R, rig, D, E = {}) {
       const rim = pal.rim, glint = pal.glint;
       let first = true;
       const half = F.glasses === 'half';
-      ellipseAxes([X, Y], A, B, null, (x, y) => { if (half && y + 0.5 < Y - 0.2) return; if (guardAt(R, x, y, null, dz, 0.9)) S.set(x - S.ox, y - S.oy, rim); });
+      const th = Math.max(1, Math.round(z * (F.rimT ?? 0.3)));
+      const la = Math.hypot(A[0], A[1]), lb = Math.hypot(B[0], B[1]);
+      const Ai = sc2(A, Math.max(0.1, (la - th) / la)), Bi = sc2(B, Math.max(0.1, (lb - th) / lb));
+      const inner = new Set();
+      ellipseAxes([X, Y], Ai, Bi, (x, y) => inner.add(x + ',' + y));
+      ellipseAxes([X, Y], A, B, (x, y, edge) => {
+        if (!edge && inner.has(x + ',' + y)) return;
+        if (half && y + 0.5 < Y - 0.2) return;
+        if (guardAt(R, x, y, null, dz, 0.9)) S.set(x - S.ox, y - S.oy, rim);
+      });
       if (half) {   // the straight top edge of a half-moon lens
         const hw = Math.abs(A[0]) + Math.abs(B[0]);
         for (let x = Math.round(X - hw); x <= Math.round(X + hw) - 1; x++) { const y = Math.round(Y - 0.5); if (guardAt(R, x, y, null, dz, 0.9)) S.set(x - S.ox, y - S.oy, rim); }
@@ -246,6 +288,7 @@ function guardAt(R, X, Y, parts, z, tol) {
   if (x < 0 || y < 0 || x >= R.w || y >= R.h) return false;
   const k = y * R.w + x;
   if (!R.hit[k]) return false;
+  if (R.S && R.S.zb && R.opt.z != null) { const si = Y * R.S.w + X; if (R.opt.z + R.pos[k * 3 + 2] < R.S.zb[si] - 0.35) return false; }
   if (parts && !parts.includes(R.part[k])) return false;
   return R.depth[k] <= z + tol;
 }
