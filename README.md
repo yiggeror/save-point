@@ -7,7 +7,7 @@ A dialogue-free pixel-art short (in production). Every frame is computed in code
 
 ## 现在在哪一步
 
-检查点 2：设计方案等选择。见 [`PROGRESS.md`](PROGRESS.md)、[`docs/preproduction.md`](docs/preproduction.md)、[`docs/design.md`](docs/design.md)，设定图在 `design/`。
+检查点 3：音乐小样和粗动态分镜等确认。看 `film/animatic-1080p.mp4`，听 `music/theme-demo.m4a`；说明见 [`docs/music.md`](docs/music.md)、[`docs/shots.md`](docs/shots.md)、[`docs/cue-sheet.md`](docs/cue-sheet.md)，进度见 [`PROGRESS.md`](PROGRESS.md)。
 
 ## 怎么做的（简）
 
@@ -17,13 +17,18 @@ A dialogue-free pixel-art short (in production). Every frame is computed in code
 
 ## 重新生成
 
-需要 Node 18+、Python 3（`fonttools`，仅在改了文字时重新提取字形）。
+需要 Node 18+、Python 3（`numpy scipy soundfile mido pyloudnorm`；改了文字时还要 `fonttools`）、FluidSynth + `FluidR3_GM.sf2`、ffmpeg。
 
 ```sh
 python3 tools/font_extract.py      # 从 Fusion Pixel 12px 提取用到的字形 → assets/font/fusion12.json
 node tools/tension_chart.mjs       # docs/tension-curve.png
 node tools/sheets.mjs              # design/*.png（全部设定图）
 node tools/sheets.mjs heroA        # 只生成一张：keeperA…C / heroA…C / shopA…C / lineup / ui
+node tools/export_cues.mjs         # 时间表 → build/cues.json（给声音用）
+python3 production/audio/score.py  # 配乐各段 → build/audio/*.wav
+python3 production/audio/mix.py    # 声轨 → build/audio/soundtrack.wav，段落表 → docs/cue-sheet.md
+node tools/render_animatic.mjs     # 动态分镜 → film/animatic-1080p.mp4
+node tools/shot_list.mjs           # 镜头表 → docs/shots.md
 ```
 
 ## 许可

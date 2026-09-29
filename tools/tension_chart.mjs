@@ -30,7 +30,8 @@ for (let x = x0; x < x1; x++) {
   prevY = y;
 }
 // a few notes
-const notes = [[31, '塔上一闪'], [55, '第一道记号'], [108, '23'], [117, '安静'], [135, '太烫！'], [150, '钟走过'], [176, '最后一闪'], [178, '门铃'], [207, '存档完成']];
+const want = ['塔上一闪', '记号还在', '23', '安静', '太烫！', '钟走过 7:12', '最后一闪', '门铃！', '存档完成'];
+const notes = TENSION.filter((k) => want.includes(k[2])).map((k) => [k[0], k[2]]);
 notes.forEach(([t, s], i) => {
   const x = X(t), y = Y(tensionAt(t));
   S.set(x, y - 1, C[6]); S.set(x, y - 2, C[6]);

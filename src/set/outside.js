@@ -130,6 +130,10 @@ export function drawOutside(S, x0, y0, w, h, o = {}) {
     hgt += Math.max(0, 1 - dp) ** 1.4 * h * 0.26;
     far.push(hz - hgt);
   }
+  // keep the tower inside the frame: if the peak plus the spire would leave the top, lower the whole range
+  const tH = Math.round(22 * Math.min(z, 2.4)), pk = Math.min(...far);
+  const need = (y0 + 6 + tH * 1.15) - pk;
+  if (need > 0) for (let x = 0; x < w; x++) far[x] += need;
   for (let x = 0; x < w; x++) {
     const X = x0 + x, top = Math.round(far[x]);
     const slope = far[Math.min(w - 1, x + 1)] - far[Math.max(0, x - 1)];
@@ -195,7 +199,7 @@ function cloud(S, X, Y, sc, k) {
 
 /** the demon lord's tower: a crooked dark spire with horns and one glowing window */
 function tower(S, x, y, z, flash, hour) {
-  const T = C.tower, H = Math.round(22 * z), W = Math.max(3, Math.round(4 * z));
+  const T = C.tower, H = Math.round(22 * Math.min(z, 2.4)), W = Math.max(3, Math.round(4 * Math.min(z, 2.4)));
   for (let j = 0; j < H; j++) {
     const u = j / H, ww = Math.max(1, Math.round(W * (1 - u * 0.45)));
     const lean = Math.round(Math.sin(u * 2.2) * 0.8 * z);

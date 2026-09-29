@@ -86,7 +86,117 @@ export function pose(D, name, o = {}) {
       P.face = { happy: 1, mouth: { grin: 1, w: 3 } };
       break;
     }
+    case 'walk': {      // phase 0..1 per two steps; feet stay planted: each stance foot moves back exactly one stride
+      const ph = o.phase ?? 0, L = o.stride ?? D.thigh * 0.9, lift = o.lift ?? 2.2, bob = o.bob ?? 0.8, st = (D.stance ?? D.hipW) * 0.8;
+      const ft = (sd, q) => {
+        q = ((q % 1) + 1) % 1;
+        if (q < 0.5) return r([sd * st, D.ankleH, L / 2 - (q / 0.5) * L]);
+        const u = (q - 0.5) / 0.5;
+        return r([sd * st, D.ankleH + Math.sin(Math.PI * u) * lift, -L / 2 + u * L]);
+      };
+      P.legs = { L: { foot: ft(1, ph) }, R: { foot: ft(-1, ph + 0.5) } };
+      P.hip = r([0, -bob * (0.5 + 0.5 * Math.cos(4 * Math.PI * ph)) + (o.bounce ?? 0) * Math.abs(Math.sin(2 * Math.PI * ph)), 0]);
+      P.spine = [-Math.sin(2 * Math.PI * ph) * 6, o.lean ?? 5, 0]; P.pelvis = [Math.sin(2 * Math.PI * ph) * 5, 0, 0];
+      P.head = [Math.sin(2 * Math.PI * ph) * 3, o.headPitch ?? -2, 0];
+      const sw = o.swing ?? 3.2;
+      if (!o.arms) P.arms = {
+        L: { hand: r([D.shoulderW + 1.6, shY - reach * 0.92, 1.2 - sw * Math.sin(2 * Math.PI * ph)]), grip: 0.35 },
+        R: { hand: r([-D.shoulderW - 1.6, shY - reach * 0.92, 1.2 + sw * Math.sin(2 * Math.PI * ph)]), grip: 0.35 },
+      };
+      break;
+    }
+    case 'proud': {     // hands on hips, chest out, chin up
+      P.spine = [0, -6, 0]; P.head = [o.look ?? 0, -8, 0];
+      P.arms = {
+        L: { hand: r([D.hipW + 4.2, D.hipH + 2.6, 1.0]), grip: 1, wrist: [40, 90, 0], pole: r([16, shY - 2, -8]) },
+        R: { hand: r([-D.hipW - 4.2, D.hipH + 2.6, 1.0]), grip: 1, wrist: [40, 90, 0], pole: r([-16, shY - 2, -8]) },
+      };
+      P.legs = { L: { foot: foot(1, 1.2, 0.5) }, R: { foot: foot(-1, -1.2, -0.5) } };
+      break;
+    }
+    case 'hop': {       // mid-air: knees up, arms up
+      P.hip = r([0, o.air ?? 4, 0]); P.spine = [0, -4, 0]; P.head = [0, -6, 0];
+      P.legs = { L: { foot: r([D.hipW, D.ankleH + (o.air ?? 4) + 3, 2]) }, R: { foot: r([-D.hipW, D.ankleH + (o.air ?? 4) + 1.5, -1]) } };
+      P.arms = { L: { hand: r([D.shoulderW + 4, shY + 3, 2]), grip: 0.3 }, R: { hand: r([-D.shoulderW - 4, shY + 3, 2]), grip: 0.3 } };
+      break;
+    }
+    case 'offer': {     // hands something across the counter to its left (screen-left when facing us)
+      const top = o.counter ?? 22;
+      P.spine = [16, 8, 0]; P.head = [18, 4, 0];
+      P.arms = {
+        L: { hand: r([D.shoulderW + reach * 0.62, top + 5, reach * 0.55]), grip: 0.85, wrist: [0, 20, 0] },
+        R: { hand: r([-3, top + 1, reach * 0.5]), grip: 0.1, wrist: [60, 0, 0] },
+      };
+      break;
+    }
+    case 'armsCrossed': {
+      P.spine = [0, -3, 0]; P.head = [o.look ?? 0, o.nod ?? 0, 0];
+      P.arms = {
+        L: { hand: r([-2.5, shY - 5.5, 5.0]), grip: 0.6, wrist: [30, 70, 0], pole: r([14, shY - 8, 2]) },
+        R: { hand: r([2.5, shY - 6.5, 5.6]), grip: 0.6, wrist: [30, 70, 0], pole: r([-14, shY - 8, 2]) },
+      };
+      if (o.tap) P.legs = { L: { foot: r([(D.stance ?? D.hipW), D.ankleH + (o.tap > 0.5 ? 1.2 : 0), 1.5]) } };
+      break;
+    }
+    case 'headDown': {  // forehead on the counter, arms flat
+      const top = o.counter ?? 22;
+      P.spine = [0, 34, 0]; P.head = [0, 26, 0]; P.hip = r([0, -1, -2]);
+      P.arms = { L: { hand: r([5, top + 1, reach * 0.6]), grip: 0.1, wrist: [80, 0, 0] }, R: { hand: r([-5, top + 1, reach * 0.6]), grip: 0.1, wrist: [80, 0, 0] } };
+      break;
+    }
+    case 'shrug': {
+      P.spine = [0, -2, 0]; P.head = [0, -2, 12]; P.shrug = [2.2, 2.2];
+      P.arms = { L: { hand: r([D.shoulderW + 5, shY - 3, 5]), grip: 0, wrist: [-40, -60, 0] }, R: { hand: r([-D.shoulderW - 5, shY - 3, 5]), grip: 0, wrist: [-40, -60, 0] } };
+      break;
+    }
+    case 'salute': {
+      P.spine = [0, -4, 0]; P.head = [0, -4, 0];
+      P.arms = { R: { hand: r([-3.2, shY + 9, 4.5]), grip: 0, wrist: [0, 60, 0], pole: r([-16, shY, 2]) }, L: { off: r([0.3, 0, 0.4]) } };
+      break;
+    }
+    case 'carry': {     // both hands carry something in front (the cup; the horn)
+      P.spine = [0, o.lean ?? 4, 0]; P.head = [0, o.headPitch ?? 12, 0];
+      P.arms = {
+        R: { hand: r([-1.2, shY - reach * 0.45, reach * 0.62]), grip: 0.55, wrist: [10, 60, 0] },
+        L: { hand: r([2.0, shY - reach * 0.55, reach * 0.55]), grip: 0.2, wrist: [70, -40, 0] },
+      };
+      if (o.phase != null) {
+        const w = pose(D, 'walk', { ...o, arms: true });
+        P.legs = w.legs; P.hip = w.hip; P.pelvis = w.pelvis;
+      }
+      break;
+    }
+    case 'drink': {     // the cup up to the mouth, head tipped back
+      P.spine = [0, -6, 0]; P.head = [0, -22, 0];
+      P.arms = { R: { hand: r([-1.5, shY + 3.5, 6.5]), grip: 0.55, wrist: [10, 60, 0] }, L: { hand: r([2, shY - 4, 5.5]), grip: 0.3 } };
+      break;
+    }
+    case 'fan': {       // too hot: tongue out, fanning the mouth
+      const k = o.phase ?? 0;
+      P.spine = [0, 6, 0]; P.head = [0, -4, (k > 0.5 ? 6 : -6)];
+      P.arms = { R: { hand: r([-1.5, shY + 1.5 + k * 2, 7.5]), grip: 0, spread: 1, wrist: [0, 80, 0] }, L: { hand: r([3, shY - reach * 0.55, reach * 0.5]), grip: 0.55, wrist: [10, 60, 0] } };
+      break;
+    }
+    case 'push': {      // pushing things across the counter with both hands, not looking up
+      const top = o.counter ?? 22;
+      P.spine = [0, 22, 0]; P.head = [0, 18, 0];
+      P.arms = { L: { hand: r([4, top + 1.2, reach * 0.85]), grip: 0.2, wrist: [70, 0, 0] }, R: { hand: r([-4, top + 1.2, reach * 0.85]), grip: 0.2, wrist: [70, 0, 0] } };
+      break;
+    }
+    case 'reach': {     // one arm up high (hanging the horn on its hook, taking the shield off the wall)
+      P.spine = [0, -8, 0]; P.head = [0, -24, 0];
+      P.arms = { L: { hand: r([2, shY + reach * 0.85, 4]), grip: 0.7 }, R: { hand: r([-2, shY + reach * 0.8, 4]), grip: 0.7 } };
+      break;
+    }
+    case 'bump': {      // bounced back off the invisible wall
+      P.spine = [0, -14, -6]; P.head = [0, -16, 8]; P.hip = r([0, -1.5, -2]);
+      P.arms = { L: { hand: r([D.shoulderW + 6, shY + 2, 3]), grip: 0, spread: 1 }, R: { hand: r([-D.shoulderW - 6, shY + 2, 3]), grip: 0, spread: 1 } };
+      P.legs = { L: { foot: foot(1, 1, 3) }, R: { foot: foot(-1, -1, -1) } };
+      break;
+    }
   }
+  if (o.head) P.head = o.head;
+  if (o.props) P.props = [...(P.props || []), ...o.props];
   Object.assign(P, o.extra || {});
   return P;
 }

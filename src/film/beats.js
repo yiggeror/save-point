@@ -1,43 +1,51 @@
-// The story's single timeline (draft, checkpoint 1): sections, beats and the tension curve.
-// Picture pace, cutting, music density and loudness all read from here. Times are seconds from the first frame.
-// They will move to the bar lines of the score in the animatic stage.
+// The tension curve, keyed to the timeline's own beats (so it moves with the bars when the timeline changes).
+// Picture pace, cutting, music density and loudness read from here.
+import { TL, DURATION as DUR, HERO, BAR } from './timeline.js';
 
-export const SECTIONS = [
-  { id: 'open',     name: '开场',   mood: '平静',           t0: 0,   t1: 14 },
-  { id: 'first',    name: '第一次', mood: '轻快',           t0: 14,  t1: 38 },
-  { id: 'discover', name: '发现',   mood: '好奇 → 有趣',    t0: 38,  t1: 72 },
-  { id: 'montage',  name: '蒙太奇', mood: '越来越快',       t0: 72,  t1: 110 },
-  { id: 'quiet',    name: '安静',   mood: '放松',           t0: 110, t1: 146 },
-  { id: 'wait',     name: '等待',   mood: '越来越紧',       t0: 146, t1: 178 },
-  { id: 'return',   name: '回来',   mood: '释放',           t0: 178, t1: 198 },
-  { id: 'coda',     name: '尾声',   mood: '一个小笑',       t0: 198, t1: 210 },
-  { id: 'credits',  name: '字幕',   mood: '',               t0: 210, t1: 228 },
-];
+const T = TL.T;
+export const SECTIONS = TL.SECTIONS.map((s) => ({ ...s, mood: { open: '平静', first: '轻快', discover: '好奇 → 有趣', montage: '越来越快', quiet: '放松', wait: '越来越紧', return: '释放', coda: '一个小笑', credits: '' }[s.id] }));
+export const DURATION = DUR;
 
-/** [t, tension 0..10, note] */
-export const TENSION = [
-  [0, 1, '黑场·存档图标'], [3, 1.2], [8, 1.5, '地图铺完'], [14, 2.5, '门铃'], [17, 3, '拍金币'], [24, 3.5, '英雄姿势'], [28, 3],
-  [31, 4.6, '塔上一闪'], [33, 3.8], [35, 3.4, '读档'], [38, 4.5, '!? 又来了'], [41, 5], [47, 5], [51, 5.6, '一闪'], [53, 4.2],
-  [55, 3.8, '第一道记号'], [58, 5, '指盾'], [65, 5.8, '一闪'], [66, 4.6], [68, 4.4, '记号还在'], [72, 5.2],
-  // montage: a saw-tooth that climbs, each fall smaller than the last
-  [78, 6.2, '改价签'], [80, 6.6, '火光'], [81, 5.6], [86, 6.9, '还药水'], [88, 7.2, '掉下悬崖'], [89, 6.4],
-  [93, 7.4, '地图拿倒'], [95, 7.8, '史莱姆'], [96, 7.2], [99, 8.2, '撞墙'], [100, 7.8], [102, 8.4], [103, 8.1], [104.5, 8.7], [105.5, 8.5],
-  [106.5, 8.9], [107.3, 8.8], [108, 9.1, '23'],
+function build() {
+  const K = [];
+  const k = (t, v, note) => K.push([+t.toFixed(3), v, note]);
+  k(0, 1, '黑场·存档图标'); k(3, 1.2); k(T.map[1], 1.5, '地图铺完');
+  // loops 1–3: each climbs to the flash and falls back with the rewind; each a little higher than the last
+  T.loops.forEach((l, i) => {
+    const at = (b) => l.ft(l.s(b)), base = [2.5, 4.5, 5.0][i];
+    k(l.t0 + 0.01, [1.6, 3.4, 3.8][i]);
+    k(at(HERO.bell), base, i === 0 ? '门铃' : i === 1 ? '!? 又来了' : '指盾');
+    k(at(HERO.slap), base + 0.5, i === 0 ? '拍金币' : undefined);
+    k(at(HERO.pose), base + 0.9, i === 0 ? '英雄姿势' : undefined);
+    k(l.flashT, base + 2.0, i === 0 ? '塔上一闪' : undefined);
+    k(l.rw[0], base + 1.0, i === 0 ? '读档' : undefined);
+    k(l.rw[1], base + 0.6);
+  });
+  k(T.loop4.t0 + 1.0, 4.4, '记号还在');
+  // montage: a saw-tooth that climbs; each fall smaller than the last
+  const M = T.montage;
+  T.montageLoops.forEach(([b0, n, gag], i) => {
+    const t0 = M.at(b0), t1 = M.at(b0 + n), v = 5.2 + 3.8 * (b0 / 22);
+    k(t0 + 0.02, v - (gag === 'tally' ? 0.1 : 0.6));
+    k(t1 - 0.05, v + 0.2, gag === 'tally' && b0 === 22 ? '23' : undefined);
+  });
   // the cliff: quiet
-  [110, 2, '坐在长凳上'], [117, 1.5, '安静'], [121, 3, '走出柜台·边界碎开'], [128, 2.5, '倒茶'], [135, 3.2, '太烫！'], [139, 2.5, '不收钱'],
+  const q = T.quiet, w = T.wait, r = T.ret, c = T.coda;
+  k(q.t0 + 0.05, 2.2); k(q.sit, 1.8, '坐在长凳上'); k(q.look[1], 1.5, '安静'); k(q.shatter, 3.0, '边界碎开'); k(q.hand[0], 2.5, '递茶'); k(q.hot, 3.2, '太烫！');
+  k(q.refuse[0], 2.5, '不收钱'); k(q.t1, 3.0);
   // the wait: a smooth ramp with no release
-  [146, 3.5, '出门'], [150, 5, '钟走过 7:12'], [158, 6, '黄昏 → 夜'], [166, 7.5, '塔上闪光，没有音乐'], [172, 8.2, '蜡烛短了'], [176, 9, '最后一闪'],
-  [178, 3, '门铃！'], [184, 2, '很小的笑'], [188, 2.5, '挥手'], [194, 2, '一颗星'],
-  [198, 3, '新勇者'], [203, 2.5, '推过去'], [207, 1, '存档完成'], [210, 2], [228, 1.5],
-];
-
-export const DURATION = 228;
+  k(w.leave[1], 3.5, '出门'); k(w.pass, 5.0, '钟走过 7:12'); k(w.lapse[1], 6.4, '黄昏 → 夜'); k(w.flashes[0], 7.4, '塔上闪光，没有音乐'); k(w.candleShot[1], 8.3, '蜡烛短了'); k(w.last, 9.0, '最后一闪'); k(w.t1 - 0.05, 9.1);
+  k(r.bell, 3.0, '门铃！'); k(r.smile[0], 2.0, '很小的笑'); k(r.wave[0], 2.5, '挥手'); k(r.star, 2.0, '一颗星');
+  k(c.bell, 3.0, '新勇者'); k(c.push, 2.5, '推过去'); k(c.saved, 1.0, '存档完成'); k(T.credits.grid.t0, 2.0); k(DUR, 1.5);
+  return K.sort((a, b) => a[0] - b[0]);
+}
+export const TENSION = build();
 export function tensionAt(t) {
-  const T = TENSION;
-  if (t <= T[0][0]) return T[0][1];
-  for (let i = 0; i + 1 < T.length; i++) if (t < T[i + 1][0]) {
-    const [a, va] = T[i], [b, vb] = T[i + 1];
-    return va + (vb - va) * (t - a) / (b - a);
+  const X = TENSION;
+  if (t <= X[0][0]) return X[0][1];
+  for (let i = 0; i + 1 < X.length; i++) if (t < X[i + 1][0]) {
+    const [a, va] = X[i], [b, vb] = X[i + 1];
+    return va + (vb - va) * (t - a) / Math.max(1e-6, b - a);
   }
-  return T[T.length - 1][1];
+  return X[X.length - 1][1];
 }

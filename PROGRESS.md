@@ -9,7 +9,7 @@
 - `docs/tension-curve.png`：紧张度曲线。数据在 `src/film/beats.js`，之后画面、剪辑、配乐和音量都读这一条曲线。
 - 全片目标约 3:48（正片 3:30 + 字幕 18 秒），片名短片头另做。
 
-## 2. 设计 ✅（等选择）
+## 2. 设计 ✅（已选定：店主 A「老掌柜」· 勇者 A「刺头」· 店铺 A「木屋」）
 
 - 说明：`docs/design.md`。设定图在 `design/`。
 - 店主 3 个方案、勇者 3 个方案：每个都有调色板、精灵尺寸、游戏尺寸转面、性格动作、插入镜头细节级别转面、头像特写、表情表。
@@ -29,6 +29,20 @@
 - `src/ui/`：气泡图标、HUD、商店菜单、存档水晶。
 - 工具：`tools/sheets.mjs`（设定图）、`tools/tension_chart.mjs`、`tools/test_*.mjs`（快速看图）、`tools/font_extract.py`。
 
-## 3. 音乐小样和动态分镜 ⏳（选定设计之后）
+## 3. 音乐小样和动态分镜 ✅（等确认）
+
+- **时间表按小节排**：`src/film/timeline.js` 是全片唯一的时间表。商店 BGM 120 bpm；每一"轮"是勇者过的一天：
+  两小节 NPC 待机、第 3 小节门铃、进门到拍金币每一帧都相同。一轮里有"脚本时间"，快进时胶片时间比脚本时间快，配乐跟着脚本走，所以也跟着快进。
+  全片 3:59.9（含字幕 16 秒），50 个镜头（`docs/shots.md`，自动生成）。紧张度曲线（`src/film/beats.js`）改成直接挂在时间表的节拍上。
+- **配乐**：`production/audio/`。`music.py` 是引擎（音符放在和画面同一套速度网格上，FluidSynth 渲染 FluidR3 GM，
+  每件乐器一道柔和低通 + 同一个芯片式回声）；`score.py` 是作曲（主题、编曲和 10 段配乐）；`sfx.py` 是合成音效（游戏音都在 F 大调上）；
+  `mix.py` 混音：每一轮从同一份 BGM 母带里按脚本切出、快进时变速，读档用这一轮自己的声音倒放，并自动生成段落表 `docs/cue-sheet.md`
+  （起止、间隔/重叠、响度）。第一版段落表查出 5 处重叠（窗外"游戏结束"的回声拖进下一轮等），已修，现在没有重叠。
+- **说明**：`docs/music.md`（一首曲子贯穿全片；直到勇者回来之前从没走到收束；和画面锁在一起的点）。
+- **粗动态分镜**：`src/film/animatic.js` + `tools/render_animatic.mjs`（4 线程逐帧渲染，ffmpeg 最近邻放大 ×5）。
+  真实的店铺和人物、摆好的关键姿势（姿势到姿势，位置移动，走路脚踩地不滑）、真实界面（HUD、菜单、气泡、存档水晶、快进标志）、
+  读档的 4 色倒带、读地图、插入镜头（窗、柜台底下的记号、价签、钟、蜡烛、头像）、右侧和下方是镜头号、说明、小节、紧张度。
+- 交付：`film/animatic-1080p.mp4`、`music/theme-demo.m4a`、`music/score-draft-full.m4a`。
+- 新工具：`tools/export_cues.mjs`、`tools/animatic_still.mjs`、`tools/contact.mjs`、`tools/shot_list.mjs`、`production/tools_spectro.py`（没有耳朵时用频谱图检查渲染）。
 ## 4. 动作测试 ⏳
 ## 5. 正片 ⏳
