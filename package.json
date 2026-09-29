@@ -1,0 +1,11 @@
+{
+  "name": "save-point",
+  "private": true,
+  "type": "module",
+  "description": "存档点 · Save Point — a pixel-art animated short rendered entirely in code.",
+  "scripts": {
+    "font": "python3 tools/font_extract.py",
+    "sheets": "node tools/sheets.mjs",
+    "chart": "node tools/tension_chart.mjs"
+  }
+}
