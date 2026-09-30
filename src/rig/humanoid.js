@@ -72,7 +72,7 @@ export function skeleton(D, P) {
     dors = norm(sub(dors, mul(fd, dot(dors, fd))));
     fd = norm(add(mul(fd, Math.cos(dd)), mul(thumb, Math.sin(dd))));
     thumb = norm(cross(fd, dors)); if (dot(thumb, mul(cross(dors, fd0), -s)) < 0) thumb = mul(thumb, -1);
-    S.arm[side] = { s, sh, el, wr, fd, dors, thumb, grip: A.grip ?? 0.25, spread: A.spread ?? 0, point: A.point ?? 0 };
+    S.arm[side] = { s, sh, el, wr, fd, dors, thumb, grip: A.grip ?? 0.25, spread: A.spread ?? 0, point: A.point ?? 0, target: hand, pole };
 
     // ---- leg
     const Lg = P.legs[side] || {};
@@ -83,7 +83,7 @@ export function skeleton(D, P) {
     const [kn, an] = ik2(hipJ, ankleL, D.thigh, D.shin, kpole);
     const fyaw = (Lg.yaw ?? s * (D.footOut ?? 8)) + P.yaw;
     const footF = mm(rotY(fyaw), rotX(Lg.toe || 0));
-    S.leg[side] = { s, hip: hipJ, knee: kn, ankle: an, footF };
+    S.leg[side] = { s, hip: hipJ, knee: kn, ankle: an, footF, target: ankleL, pole: kpole, fyaw: fyaw - P.yaw };
   }
   return S;
 }
@@ -103,7 +103,10 @@ export function build(D, P) {
   const S = skeleton(D, P);
   const fig = new Figure();
   const ctx = kit(fig, S);
+  ctx.D = D;
   ctx.expr = P.face || {};
+  ctx.sec = P.sec || {};
+  ctx.gear = P.gear || {};           // things worn for a while (the shield on his back when he leaves)              // secondary motion: sway [x,y,z] (world units), lift, from the animation layer
   const M = D.M;
   const gTorso = fig.group('torso');
   const gHead = fig.group('head', { parent: 'torso', J: S.neck, R: D.neckBlendR ?? 5, k: D.neckK ?? 2.5 });

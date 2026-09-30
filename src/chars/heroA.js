@@ -4,6 +4,7 @@ import { materials } from '../rig/mat.js';
 import { ramp } from '../pix/gfx.js';
 import { mm, rotZ, rotY, rotX, add, sub, apply, mul, norm, lerp3 } from '../rig/m3.js';
 import { strip, strand, drape } from '../rig/cloth.js';
+import { withProps } from '../rig/props.js';
 
 export function heroMaterials(prefix, c) {
   return materials(prefix, {
@@ -57,12 +58,16 @@ export function spikyHair(k, M, o = {}) {
     [[5.5, 2, -3], [10, 3.5, -8.5], 2.6], [[-5.5, 2, -3], [-10, 3.5, -8.5], 2.6], [[0, 1, -6], [0, 1.5, -13], 2.8],
     [[4, -1, -5], [7.5, -3.5, -10.5], 2.2], [[-4, -1, -5], [-7.5, -3.5, -10.5], 2.2],
   ];
-  for (const [b, t, r] of spikes) fig.add(cone(at(H, hc, b), at(H, hc, add(t, sway)), r, 0.35, { g, m: M.hair, k: 1.4, part: 6 }));
+  // secondary motion: the tips lag behind the head's movement (world units), more the longer the spike
+  const sw = k.sec && k.sec.sway ? k.sec.sway : [0, 0, 0], vel = k.sec && k.sec.vel ? k.sec.vel : [0, 0, 0];
+  const lag = (b, t) => { const L = Math.hypot(t[0] - b[0], t[1] - b[1], t[2] - b[2]) / 10; return [sw[0] * 0.45 * L - vel[0] * 0.012 * L, sw[1] * 0.35 * L, sw[2] * 0.45 * L - vel[2] * 0.012 * L]; };
+  for (const [b, t, r] of spikes) fig.add(cone(at(H, hc, b), add(at(H, hc, add(t, sway)), lag(b, t)), r, 0.35, { g, m: M.hair, k: 1.4, part: 6 }));
   // fringe
   const fr = o.fringe || [[[1.8, 7.4, 3.2], [3.6, 3.0, 8.3], 1.7], [[-1.4, 7.6, 3.4], [-2.4, 2.8, 8.4], 1.7], [[0.2, 8, 3.6], [0.8, 3.6, 8.6], 1.5], [[4.8, 5.6, 2.6], [7.4, 3.2, 5.0], 1.6], [[-4.8, 5.6, 2.6], [-7.2, 3.0, 5.0], 1.6]];
   for (const [b, t, r] of fr) fig.add(cone(at(H, hc, b), at(H, hc, t), r, 0.3, { g, m: M.hair, k: 1.1, part: 6 }));
 }
 
+const D_PROP = (k) => { if (!k.D.P) withProps(k.D); return true; };
 export function makeHeroA(prefix = 'hA', COL = COL_A, o = {}) {
   const { mats, M } = heroMaterials(prefix, COL);
   M.hand = M.glove;
@@ -88,7 +93,9 @@ export function makeHeroA(prefix = 'hA', COL = COL_A, o = {}) {
       for (const s of [1, -1]) {
         const pts = [knot];
         let p = knot;
-        for (let i = 1; i <= 4; i++) { p = add(p, add(mul(down, 2.1), add(mul(back, 1.3 - i * 0.2), apply(k.S.root, [s * (0.9 - i * 0.1), 0, 0])))); pts.push(p); }
+        const sw = k.sec && k.sec.sway ? k.sec.sway : [0, 0, 0], vel = k.sec && k.sec.vel ? k.sec.vel : [0, 0, 0];
+        const drift = [sw[0] * 0.5 - vel[0] * 0.02, sw[1] * 0.3 + Math.abs(vel[0] + vel[2]) * 0.004, sw[2] * 0.5 - vel[2] * 0.02];
+        for (let i = 1; i <= 4; i++) { p = add(p, add(add(mul(down, 2.1), add(mul(back, 1.3 - i * 0.2), apply(k.S.root, [s * (0.9 - i * 0.1), 0, 0]))), mul(drift, 0.25 * i))); pts.push(p); }
         strip(fig, pts, [1.9, 1.8, 1.7, 1.6, 1.3], apply(k.S.root, [0, 0, -1]), { g, m: M.band, thick: 0.6, part: 7 });
       }
     },
@@ -110,11 +117,22 @@ export function makeHeroA(prefix = 'hA', COL = COL_A, o = {}) {
       for (let i = 0; i < n; i++) {
         const u = i / (n - 1) * 2 - 1;
         top.push(at(C, S.chest, [u * 5.2, 3.9 - Math.abs(u) * 0.8, -5.0 + Math.abs(u) * 1.2]));
-        bot.push(add(at(R, [0, 0, 0], [u * 7.4, 0, 0]), add([0, S.pelvis[1] - 13.5 + Math.abs(u) * 0.8, 0], add(mul(back, 6.2 + flare * 1.2 - Math.abs(u) * 1.2), [S.pelvis[0], 0, S.pelvis[2]]))));
+        // the hem lags behind the body and streams back with speed (secondary motion from the animation layer)
+        const sw = k.sec && k.sec.sway ? k.sec.sway : [0, 0, 0], vel = k.sec && k.sec.vel ? k.sec.vel : [0, 0, 0];
+        const sp = Math.hypot(vel[0], vel[2]), stream = [-vel[0] * 0.07, Math.min(3.5, sp * 0.05) + sw[1] * 0.4, -vel[2] * 0.07];
+        const hem = [sw[0] * 1.1 + stream[0] * (1 - Math.abs(u) * 0.2), stream[1], sw[2] * 1.1 + stream[2] * (1 - Math.abs(u) * 0.2)];
+        bot.push(add(add(at(R, [0, 0, 0], [u * 7.4, 0, 0]), add([0, S.pelvis[1] - 13.5 + Math.abs(u) * 0.8, 0], add(mul(back, 6.2 + flare * 1.2 - Math.abs(u) * 1.2), [S.pelvis[0], 0, S.pelvis[2]]))), hem));
       }
       drape(fig, top, bot, back, { g: fig.group('cape', { parent: 'torso', J: top[2], R: 1, k: 0 }), m: M.cape, thick: 0.9, part: 42, k: 1.4, pleat: 14 });
       // clasps
       for (const s of [1, -1]) fig.add(ell(at(C, S.chest, [s * 5.0, 3.6, 1.8]), C, [1.1, 1.1, 0.8], { g, m: M.buckle, k: 0, part: 33 }));
+      // the keeper's shield, slung on his back when he sets out (over the cape)
+      if (k.gear && k.gear.backShield && D_PROP(k)) {
+        const P2 = k.D.P, sc = at(C, S.chest, [0, -1.5, -7.6]), F = C;
+        fig.add(ell(sc, F, [6.4, 6.4, 0.6], { g, m: P2.iron, k: 0, part: 70 }));
+        fig.add(ell(at(C, S.chest, [0, -1.5, -8.0]), F, [5.8, 5.8, 0.6], { g, m: P2.shield, k: 0, part: 71 }));
+        fig.add(ell(at(C, S.chest, [0, -1.5, -8.6]), F, [1.5, 1.5, 0.8], { g, m: P2.iron, k: 0.2, part: 72 }));
+      }
     },
   };
 }

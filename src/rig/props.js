@@ -18,6 +18,12 @@ export const PROP_MATS = {
   pencilR: () => material('prop.pencilR', '#c8423a', { edge: true, r: { cool: 330 } }),
   pencilB: () => material('prop.pencilB', '#3f68c2', { edge: true }),
   lead:    () => material('prop.lead', '#e8d2a8', { edge: true }),
+  shield:  () => material('prop.shield', '#b48454', { edge: true, r: { cool: 320, shift: 0.25 } }),
+  iron:    () => material('prop.iron', '#6f7580', { spec: 5, specTh: 0.85, r: { cool: 260 } }),
+  potion:  () => material('prop.potion', '#c83e3a', { spec: 5, specTh: 0.8, r: { cool: 330 } }),
+  cork:    () => material('prop.cork', '#b98a58', {}),
+  horn:    () => material('prop.horn', '#e2d6b8', { edge: true, r: { cool: 280, shift: 0.2 } }),
+  hornB:   () => material('prop.hornB', '#6a4a8a', { edge: true }),
 };
 
 /** append prop materials to a figure's material table (once) */
@@ -31,6 +37,7 @@ export function withProps(D) {
 /**
  * Add a prop held in hand `a` (skeleton arm with .F = [thumb, fingers, back] frame and .palmC).
  * kind: 'sword' | 'cup' | 'rag' | 'pouch' | 'chalk' | 'pencil' (a red-and-blue pencil; o.end 'R'|'B' = which end writes)
+ *       | 'shield' (round, held by its rim; o.face: the way its front faces) | 'potion' | 'horn' (the demon lord's, carried)
  */
 export function holdProp(fig, D, a, kind, o = {}) {
   const P = D.P, F = a.F, g = fig.group('prop_' + kind + a.s, null);
@@ -76,6 +83,41 @@ export function holdProp(fig, D, a, kind, o = {}) {
     fig.add(ell(add(c, [0, -1.4, 0]), frame([0, 1, 0]), [2.3, 2.2, 2.1], { g, m: P.pouch, k: 0.4, part: 66 }));
     fig.add(cone(add(c, [0, 0.6, 0]), add(c, [0, 1.6, 0]), 0.9, 1.3, { g, m: P.pouch, k: 0.5, part: 66 }));
     return {};
+  }
+  if (kind === 'shield') {
+    // a round wooden shield held by its rim: the disc hangs from the hand, its front turned toward o.face (default: out of the fingers' side)
+    const nrm = norm(o.face ? o.face : X), down = norm(sub([0, -1, 0], mul(nrm, dot([0, -1, 0], nrm))));
+    const c = madd(grip, down, 6.0), side = norm(cross(nrm, down)), F3 = [...side, ...down, ...nrm];
+    fig.add(ell(c, F3, [6.6, 6.6, 0.55], { g, m: P.iron, k: 0, part: 70 }));
+    fig.add(ell(madd(c, nrm, 0.35), F3, [6.0, 6.0, 0.55], { g, m: P.shield, k: 0, part: 71 }));
+    fig.add(ell(madd(c, nrm, 0.85), F3, [1.6, 1.6, 0.8], { g, m: P.iron, k: 0.2, part: 72 }));
+    return { c };
+  }
+  if (kind === 'potion') {
+    const c = madd(madd(grip, Z, -0.4), [0, 1, 0], 0.6);
+    fig.add(ell(c, frame([0, 1, 0]), [1.5, 1.4, 1.5], { g, m: P.potion, k: 0, part: 73 }));
+    fig.add(cone(madd(c, [0, 1, 0], 1.0), madd(c, [0, 1, 0], 2.3), 0.55, 0.5, { g, m: P.potion, k: 0.2, part: 73 }));
+    fig.add(cone(madd(c, [0, 1, 0], 2.3), madd(c, [0, 1, 0], 2.9), 0.55, 0.55, { g, m: P.cork, k: 0, part: 74 }));
+    return { c };
+  }
+  if (kind === 'horn') {
+    // the demon lord's horn, carried over the shoulder: thick purple-banded root in the hand, curling up and back
+    const up = [0, 1, 0], back = norm(sub(mul(Z, -1), mul(up, dot(mul(Z, -1), up)))), side = norm(cross(up, back));
+    let prev = madd(grip, X, -1.0);
+    for (let i = 1; i <= 8; i++) {
+      const u = i / 8, a = u * 2.4;
+      const p = add(add(grip, mul(X, -1.0 + u * 3.0)), add(mul(up, Math.sin(a) * 7 + u * 3), mul(back, (1 - Math.cos(a)) * 5)));
+      fig.add(cone(prev, p, 2.1 * (1 - (u - 0.125) * 0.85), 2.1 * (1 - u * 0.85) + 0.15, { g, m: i <= 2 ? P.hornB : P.horn, k: 0.6, part: 75 }));
+      prev = p;
+    }
+    return {};
+  }
+  if (kind === 'receipt') {
+    // a slip of paper pinched between thumb and fingers
+    const c = madd(madd(grip, X, 1.6), Y, 1.2), up = norm(add(Y, mul(X, 0.4)));
+    const side = norm(cross(up, Z));
+    fig.add(box(c, [...side, ...up, ...norm(cross(side, up))], [1.8, 2.6, 0.12], 0.1, { g, m: P.paper, k: 0, part: 76 }));
+    return { c };
   }
   if (kind === 'pencil') {
     // the writing end's half is its colour (the keeper turns the pencil round between colours)

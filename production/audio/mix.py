@@ -8,6 +8,7 @@ import numpy as np
 import soundfile as sf
 from music import SR, BUILD, ROOT, load_cues, loudness, lowpass, highpass, bandpass, snes_echo
 import sfx
+import foley
 
 C = load_cues()
 DUR = C['DURATION']; BEAT = 60.0 / C['BPM']
@@ -101,14 +102,24 @@ SOUNDS = {
     'step': (lambda e: sfx.step(e.get('who', 'hero')), 0.0, 0.7), 'thud': (lambda e: sfx.thud(), 0.0, 0.5), 'chalk': (lambda e: sfx.chalk(), 0.1, 0.8),
     'saveTick': (lambda e: sfx.save_tick(), 0.5, 0.8), 'mapRow': (lambda e: sfx.map_row(e['i']), 0.0, 0.8),
     'rewindWhoosh': (lambda e: sfx.whoosh(0.3, True), 0.0, 0.6), 'boing': (lambda e: sfx.boing(), 0.3, 0.8), 'gridFlash': (lambda e: sfx.grid_flash(), 0.3, 0.8),
-    'potionClink': (lambda e: sfx.tap(2600), 0.2, 0.6), 'scribble': (lambda e: sfx.scribble(), 0.3, 0.6),
+    'potionClink': (lambda e: foley.glass(1), 0.2, 0.6), 'scribble': (lambda e: sfx.scribble(), 0.3, 0.6),
     'rewindAbort': (lambda e: sfx.whoosh(0.45, True), 0.0, 0.7),
+    'cupPass': (lambda e: foley.cup_pass(), -0.35, 0.8), 'blow': (lambda e: foley.blow(), -0.45, 0.8), 'sip': (lambda e: foley.sip(), -0.45, 0.7),
+    'shieldSet': (lambda e: foley.shield_set(), -0.3, 0.8), 'potionSet': (lambda e: foley.glass(0), -0.25, 0.7),
+    'doorOpen': (lambda e: foley.door_open(), -0.6, 0.55), 'doorShut': (lambda e: foley.door_close(), -0.6, 0.6),
     'deathFx': (lambda e: sfx.death_fx(e.get('death')), 0.0, 0.6), 'benchSit': (lambda e: sfx.creak(), -0.5, 0.8), 'pour': (lambda e: sfx.pour(e.get('dur', 2.6)), 0.4, 0.7),
-    'shatter': (lambda e: sfx.shatter(), 0.1, 0.9), 'cupSet': (lambda e: sfx.tap(1500), -0.4, 0.6), 'gulp': (lambda e: sfx.gulp(), -0.4, 0.8), 'hot': (lambda e: sfx.hot(), -0.4, 0.8),
-    'itemSet': (lambda e: sfx.thunk() * 0.4, -0.4, 0.8), 'paper': (lambda e: sfx.paper(), -0.4, 0.7), 'clockPass': (lambda e: sfx.tick(0) * 1.6, -0.3, 0.8),
+    'shatter': (lambda e: sfx.shatter(), 0.1, 0.9), 'cupSet': (lambda e: foley.cup_set(), -0.4, 0.6), 'gulp': (lambda e: sfx.gulp(), -0.4, 0.8), 'hot': (lambda e: sfx.hot(), -0.4, 0.8),
+    'itemSet': (lambda e: foley.knock('medium'), -0.4, 0.8), 'paper': (lambda e: sfx.paper(), -0.4, 0.7), 'clockPass': (lambda e: sfx.tick(0) * 1.6, -0.3, 0.8),
     'match': (lambda e: sfx.match(), 0.3, 0.8), 'towerFlash': (lambda e: sfx.rumble(), 0.0, 0.5), 'tick': (lambda e: sfx.tick(int(e['t'])), -0.3, 0.8),
     'thunk': (lambda e: sfx.thunk(), 0.2, 0.9), 'hang': (lambda e: sfx.hang(), -0.6, 0.7), 'star': (lambda e: sfx.star(), 0.1, 0.6), 'push': (lambda e: sfx.push(), 0.2, 0.8),
 }
+# the door opens with every bell (the bell hangs on it) and shuts a moment later
+extra = []
+for e in C['events']:
+    if e['kind'] != 'bell': continue
+    extra.append({'t': e['t'] - 0.04, 'kind': 'doorOpen'})
+    if not any(x['kind'] == 'doorClose' and 0 < x['t'] - e['t'] < 2.2 for x in C['events']): extra.append({'t': e['t'] + (1.75 if e.get('resolve') else 1.3), 'kind': 'doorShut'})
+C['events'] = sorted(C['events'] + extra, key=lambda x: x['t'])
 for e in C['events']:
     if e['kind'] not in SOUNDS: continue
     f, pan, g = SOUNDS[e['kind']]

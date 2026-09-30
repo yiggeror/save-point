@@ -82,7 +82,9 @@ export const keeperA = {
       clip: [[apply(P, [0, 0, -1]), at(P, bc, [0, 0, 3.2])], [apply(P, [1, 0, 0]), at(P, bc, [6.2, 0, 0])], [apply(P, [-1, 0, 0]), at(P, bc, [-6.2, 0, 0])]],
     }));
     const kn = add(S.leg.L.knee, S.leg.R.knee).map((v) => v / 2);
-    const top = at(P, S.pelvis, [0, -1, 6.4]), bot = [kn[0], kn[1] + 0.6, kn[2] + 3.4];
+    // the apron's hem swings a little behind the body (secondary motion)
+    const sw = k.sec && k.sec.sway ? k.sec.sway : [0, 0, 0];
+    const top = at(P, S.pelvis, [0, -1, 6.4]), bot = [kn[0] + sw[0] * 0.5, kn[1] + 0.6 + sw[1] * 0.2, kn[2] + 3.4 + sw[2] * 0.5];
     const pc = top.map((v, i) => (v + bot[i]) / 2);
     fig.add(box(pc, P, [6.3, (top[1] - bot[1]) / 2 + 0.6, 0.7], 0.6, { g, m: M.apron, k: 1.5, part: 30 }));
     // neck strap

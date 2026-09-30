@@ -17,7 +17,9 @@ export function ponytail(k, M) {
   fig.add(ell(tie, H, [1.4, 1.4, 1.2], { g, m: M.band, k: 0.3, part: 7 }));
   const back = apply(k.S.root, [0, 0, -1]);
   const pts = [tie]; let p = tie;
-  for (let i = 1; i <= 4; i++) { p = add(p, add([0, -2.2 - i * 0.2, 0], mul(back, 1.9 - i * 0.35))); pts.push(p); }
+  const sw = k.sec && k.sec.sway ? k.sec.sway : [0, 0, 0], vel = k.sec && k.sec.vel ? k.sec.vel : [0, 0, 0];
+  const drift = [sw[0] * 0.5 - vel[0] * 0.02, sw[1] * 0.3, sw[2] * 0.5 - vel[2] * 0.02];
+  for (let i = 1; i <= 4; i++) { p = add(p, add(add([0, -2.2 - i * 0.2, 0], mul(back, 1.9 - i * 0.35)), mul(drift, 0.3 * i))); pts.push(p); }
   strand(fig, pts, [2.2, 2.4, 2.2, 1.7, 0.8], { g, m: M.hair, k: 0.9, part: 6 });
 }
 

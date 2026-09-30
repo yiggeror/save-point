@@ -1,10 +1,11 @@
 """Synthesized sound effects. Game sounds (menu, coins, bell, save, boundary, shatter) are final in character and
 tuned to F major so they never fight the score. Real-world sounds (steps, door, bench, pouring, chalk) are
-placeholders here; the recorded CC0 versions come in the action test.
+recorded CC0 sounds (foley.py; sources in assets/sfx/SOURCES.md).
 """
 import numpy as np
 from scipy import signal
 from music import SR, p, hz, lowpass, highpass, bandpass
+import foley
 
 rng = np.random.default_rng(11)
 def tt(d): return np.arange(int(d * SR)) / SR
@@ -107,15 +108,13 @@ def death_fx(kind):
     return thud() * 0.6
 
 # ---------------------------------------------------------------- in the room (placeholders for recordings)
-def step(who='hero', k=0):
-    d = 0.08; x = bandpass(noise(d)[:, None], 180 if who == 'keeper' else 300, 2500)[:, 0] * env(int(d * SR), 0.001, 0.018 if who == 'hero' else 0.03)
-    return norm(x, 0.22 if who == 'hero' else 0.18)
-def land(): x = lowpass(noise(0.2)[:, None], 400)[:, 0] * env(int(0.2 * SR), 0.001, 0.05); return norm(x, 0.5)
-def door_close():
-    x = lowpass(noise(0.3)[:, None], 300)[:, 0] * env(int(0.3 * SR), 0.002, 0.06)
-    c = bandpass(noise(0.04)[:, None], 2000, 6000)[:, 0] * env(int(0.04 * SR), 0.0005, 0.01)
-    x[int(0.05 * SR):int(0.05 * SR) + len(c)] += c * 0.6
-    return norm(x, 0.45)
+def step(who='hero', k=0): return foley.step(who, k)
+
+def land(): return foley.land()
+
+def door_close(): return foley.door_close()
+def door_open(): return foley.door_open()
+
 def whoosh(d=0.35, up=True):
     t = tt(d); k = t / d
     x = bandpass(noise(d)[:, None], 400, 5000)[:, 0] * (k ** 2 if up else (1 - k) ** 2) * np.sin(np.pi * np.minimum(1, k * 1.2)) ** 0.3
@@ -125,26 +124,25 @@ def chalk(d=0.55):
     x = bandpass(noise(d)[:, None], 1800, 7000)[:, 0] * jit * np.minimum(1, t / 0.02) * np.minimum(1, (d - t) / 0.05)
     return norm(x, 0.28)
 def scribble(): return chalk(0.8) * 0.8
-def creak():
-    t = tt(0.5); f = 180 + 60 * np.sin(t * 7)
-    x = np.sign(np.sin(2 * np.pi * np.cumsum(f) / SR)) * bandpass(noise(0.5)[:, None], 300, 1500)[:, 0] * 0.3 * env(len(t), 0.05, 0.2)
-    th = land(); x[:len(th)] += th * 0.5
-    return norm(x, 0.3)
-def pour(d=2.6):
-    t = tt(d); x = bandpass(noise(d)[:, None], 600, 4500)[:, 0] * (0.6 + 0.4 * np.sin(t * 31) ** 2) * np.minimum(1, t / 0.2) * np.minimum(1, (d - t) / 0.3)
-    return norm(x, 0.2)
+def creak(k=0): return foley.creak(k)
+
+def pour(d=2.6): return foley.pour(d)
+
 def tap(f=1800): t = tt(0.1); return norm(np.sin(2 * np.pi * f * t) * env(len(t), 0.0005, 0.02) + bandpass(noise(0.1)[:, None], 1000, 5000)[:, 0] * env(len(t), 0.0005, 0.005), 0.3)
-def gulp(): t = tt(0.25); f = 260 - 120 * t / 0.25; return norm(np.sin(2 * np.pi * np.cumsum(f) / SR) * env(len(t), 0.01, 0.08), 0.3)
+def gulp(): return foley.gulp()
+
 def hot():
     """a small startled "hah!" without a voice: a squeak up, a fanning flap"""
     t = tt(0.3); f = 900 + 1400 * t / 0.3
     x = np.sin(2 * np.pi * np.cumsum(f) / SR) * env(len(t), 0.005, 0.1) * 0.6
     return norm(np.concatenate([x, whoosh(0.2, False), whoosh(0.2, False)]), 0.3)
-def thunk(): x = lowpass(noise(0.4)[:, None], 250)[:, 0] * env(int(0.4 * SR), 0.001, 0.09); return norm(x, 0.7)
+def thunk(): return foley.knock('heavy')
+
 def tick(k): t = tt(0.04); f = 2400 if k % 2 == 0 else 1900; return norm(np.sin(2 * np.pi * f * t) * env(len(t), 0.0003, 0.006) + bandpass(noise(0.04)[:, None], 2000, 8000)[:, 0] * env(len(t), 0.0003, 0.003), 0.14)
 def match(): return norm(np.concatenate([bandpass(noise(0.15)[:, None], 1500, 7000)[:, 0] * env(int(0.15 * SR), 0.002, 0.05), lowpass(noise(0.8)[:, None], 1200)[:, 0] * env(int(0.8 * SR), 0.1, 0.3) * 0.3]), 0.3)
 def rumble(): x = lowpass(noise(1.2)[:, None], 120)[:, 0] * env(int(1.2 * SR), 0.1, 0.4); return norm(x, 0.35)
-def paper(): return norm(bandpass(noise(0.3)[:, None], 1500, 8000)[:, 0] * env(int(0.3 * SR), 0.01, 0.1), 0.18)
+def paper(k=0): return foley.paper(k)
+
 def push(): return norm(bandpass(noise(0.6)[:, None], 150, 1200)[:, 0] * np.sin(np.pi * np.linspace(0, 1, int(0.6 * SR))), 0.3)
 def hang(): return norm(tap(2600) + tap(3100) * 0.5, 0.25)
 

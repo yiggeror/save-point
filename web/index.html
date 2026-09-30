@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>存档点 Save Point</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen&family=ZCOOL+QingKe+HuangYou&display=swap">
+<style>
+/* Layout: one cinema column — logo, the screen, then the reel switcher and the chapter strip under it. Single dark look on purpose. */
+:root {
+  --night: #13101b;      /* page ground, the shop at night */
+  --panel: #1e1927;      /* switcher and chip ground */
+  --line: #332b40;       /* hairlines */
+  --ink: #ece6ff;        /* text */
+  --dim: #9a92c4;        /* secondary text */
+  --amber: #f2a23c;      /* logo / active state */
+  --crystal: #5cc8f0;    /* the save crystal */
+  --display: "ZCOOL QingKe HuangYou", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --pixel: "Silkscreen", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --body: system-ui, -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--night); color: var(--ink); font: 15px/1.6 var(--body); padding-inline: 16px; padding-block: 24px 40px; }
+.wrap { max-width: 1100px; margin: 0 auto; display: grid; gap: 18px; }
+header { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
+.logo { display: flex; align-items: center; gap: 12px; }
+.logo svg { width: 26px; height: 26px; shape-rendering: crispEdges; flex: none; }
+h1 { margin: 0; font: 400 clamp(34px, 6vw, 52px)/1 var(--display); color: var(--amber); letter-spacing: 0.06em; text-shadow: 3px 3px 0 #5a2a1a; }
+.en { font: 13px/1 var(--pixel); color: var(--dim); letter-spacing: 0.08em; padding-bottom: 6px; }
+.meta { margin-left: auto; font: 12px/1.4 var(--pixel); color: var(--dim); padding-bottom: 6px; font-variant-numeric: tabular-nums; }
+.screen { position: relative; aspect-ratio: 16 / 9; max-width: 100%; background: #000; border: 2px solid var(--line); }
+video { width: 100%; height: 100%; display: block; background: #000; image-rendering: pixelated; }
+.reels { display: flex; flex-wrap: wrap; gap: 6px; }
+.reels button { font: 14px/1 var(--body); color: var(--dim); background: var(--panel); border: 2px solid var(--line); padding: 9px 14px; cursor: pointer; }
+.reels button:hover { color: var(--ink); border-color: var(--dim); }
+.reels button[aria-pressed="true"] { color: var(--night); background: var(--amber); border-color: var(--amber); }
+button:focus-visible { outline: 2px solid var(--crystal); outline-offset: 2px; }
+.about { margin: 0; color: var(--dim); font-size: 14px; max-width: 65ch; }
+.chapters { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px; }
+.chapters[hidden] { display: none; }
+.chapters button { display: grid; gap: 2px; text-align: left; background: var(--panel); border: 2px solid var(--line); border-left-width: 4px; padding: 7px 10px; cursor: pointer; color: var(--ink); font: 14px/1.3 var(--body); }
+.chapters button:hover { border-color: var(--dim); }
+.chapters button .t { font: 11px/1 var(--pixel); color: var(--dim); font-variant-numeric: tabular-nums; }
+.chapters button.now { border-left-color: var(--crystal); }
+.chapters button.now .t { color: var(--crystal); }
+footer { color: var(--dim); font-size: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
+@media (max-width: 520px) { .meta { margin-left: 0; width: 100%; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">
+      <!-- the save crystal from the film, 8×8 -->
+      <svg viewBox="0 0 8 8" aria-hidden="true"><path fill="#2a6f9e" d="M4 0h1v1h1v1h1v1h1v2h-1v1h-1v1h-1v1h-1z"/><path fill="#8fe0ff" d="M3 0h1v8h-1v-1h-1v-1h-1v-1h-1v-2h1v-1h1v-1h1z"/><path fill="#5cc8f0" d="M4 1h1v1h1v1h1v2h-1v1h-1v1h-1z"/></svg>
+      <h1>存档点</h1>
+    </div>
+    <span class="en">Save Point</span>
+    <span class="meta" id="meta">像素动画短片 · 无对白 · 3:59</span>
+  </header>
+
+  <div class="screen">
+    <video id="v" controls playsinline preload="metadata" poster="" src="media/save-point.mp4"></video>
+  </div>
+
+  <div class="reels" role="group" aria-label="选择版本">
+    <button type="button" id="reel-film" data-src="media/save-point.mp4" data-film="1" aria-pressed="true">正片</button>
+    <button type="button" id="reel-review" data-src="media/save-point-review.mp4" data-film="1" aria-pressed="false">对照版（带镜头信息）</button>
+    <button type="button" id="reel-title-music" data-src="media/title-music.mp4" aria-pressed="false">片头 · 配乐</button>
+    <button type="button" id="reel-title-sfx" data-src="media/title-sfx.mp4" aria-pressed="false">片头 · 仅音效</button>
+  </div>
+  <p class="about" id="about">一家道具店，一个在同一天里反复读档的勇者，一个终于记住了他的店主。</p>
+
+  <nav class="chapters" id="chapters" aria-label="段落"></nav>
+
+  <footer>全部画面与声音由代码生成：320×180 原生像素，整数倍放大。正片与对照版共用同一条时间线，切换版本时停在同一位置。</footer>
+</div>
+<script>
+// Sections of the film (src/film/timeline.js → TL.SECTIONS), in seconds.
+const SECTIONS = [['开场', 0], ['第一次', 6.3], ['发现', 35.7], ['蒙太奇', 88.67], ['安静', 125.17], ['等待', 167.37], ['回来', 192.37], ['尾声', 213.37], ['字幕', 227.37]];
+const ABOUT = {
+  'reel-film': '一家道具店，一个在同一天里反复读档的勇者，一个终于记住了他的店主。',
+  'reel-review': '画面下方的信息条：镜头号、景别、镜头说明、段落、时间、音乐 cue、小节.拍、张力值。用来逐镜对照检查。',
+  'reel-title-music': '单独的片头，带配乐。',
+  'reel-title-sfx': '同一个片头，只有音效。',
+};
+const v = document.getElementById('v'), nav = document.getElementById('chapters');
+const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+const chips = SECTIONS.map(([name, t]) => {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.innerHTML = `<span class="t">${fmt(t)}</span><span>${name}</span>`;
+  b.addEventListener('click', () => { v.currentTime = t + 0.01; v.play().catch(() => {}); });
+  nav.appendChild(b);
+  return b;
+});
+function markChapter() {
+  let i = 0;
+  SECTIONS.forEach(([, t], k) => { if (v.currentTime >= t) i = k; });
+  chips.forEach((c, k) => c.classList.toggle('now', k === i));
+}
+v.addEventListener('timeupdate', markChapter);
+markChapter();
+
+document.querySelectorAll('.reels button').forEach(btn => btn.addEventListener('click', () => {
+  if (btn.getAttribute('aria-pressed') === 'true') return;
+  const cur = document.querySelector('.reels button[aria-pressed="true"]');
+  const keep = cur.dataset.film && btn.dataset.film;          // film ↔ review share one timeline
+  const t = keep ? v.currentTime : 0, playing = !v.paused;
+  document.querySelectorAll('.reels button').forEach(b => b.setAttribute('aria-pressed', String(b === btn)));
+  document.getElementById('about').textContent = ABOUT[btn.id];
+  nav.hidden = !btn.dataset.film;
+  v.src = btn.dataset.src;
+  v.addEventListener('loadedmetadata', () => { if (t) v.currentTime = t; if (playing || !keep) v.play().catch(() => {}); }, { once: true });
+}));
+
+// keyboard: space play/pause, ← → five seconds, f fullscreen (when the page, not the video, has focus)
+document.addEventListener('keydown', e => {
+  if (e.target === v || e.target.tagName === 'BUTTON' && e.key === ' ') return;
+  if (e.key === ' ') { e.preventDefault(); v.paused ? v.play().catch(() => {}) : v.pause(); }
+  else if (e.key === 'ArrowRight') v.currentTime += 5;
+  else if (e.key === 'ArrowLeft') v.currentTime -= 5;
+  else if (e.key === 'f') (v.requestFullscreen ? v.requestFullscreen() : v.webkitEnterFullscreen && v.webkitEnterFullscreen())?.catch?.(() => {});
+});
+</script>
+</body>
+</html>

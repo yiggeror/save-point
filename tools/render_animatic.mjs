@@ -34,7 +34,7 @@ if (isMainThread) {
   if (r.status) process.exit(r.status);
   console.log('→', out, (fs.statSync(out).size / 1e6).toFixed(1), 'MB');
 } else {
-  const { setup, frameRGB, AW, AH } = await import('../src/film/animatic.js');
+  const { setup, frameRGB, AW, AH } = await import('../src/film/film.js');
   const { encodePNG } = await import('../src/pix/png.js');
   await setup();
   const { w, workers, f0, f1, fps } = workerData;

@@ -188,6 +188,31 @@ export function pose(D, name, o = {}) {
       P.arms = { L: { hand: r([2, shY + reach * 0.85, 4]), grip: 0.7 }, R: { hand: r([-2, shY + reach * 0.8, 4]), grip: 0.7 } };
       break;
     }
+    case 'glasses': {   // pushes his spectacles back up the bridge of his nose with one finger
+      const hy = D.hipH + D.waistUp + D.chestUp + D.neckUp + D.headUp;
+      P.spine = [0, 4, 0]; P.head = [0, 6, 0];
+      P.arms = { R: { hand: r([-0.4, hy - 1.0, 8.2]), grip: 0.85, point: 1, wrist: [0, 80, 0], pole: r([-10, hy - 12, 2]) }, L: { off: r([0.3, 0, 0.4]) } };
+      break;
+    }
+    case 'dust': {      // wiping a shelf at chest height, his back half to us (the rag in his hand)
+      const k = o.phase ?? 0;
+      P.spine = [0, 6, 0]; P.head = [0, 4, 0];
+      P.arms = { R: { hand: r([-3 + k * 6, shY - 2, reach * 0.7]), grip: 0.2, wrist: [55, 0, 0] }, L: { hand: r([5, shY - 5, reach * 0.4]), grip: 0.1, wrist: [60, 10, 0] } };
+      P.props = [{ hand: 'R', kind: 'rag' }];
+      break;
+    }
+    case 'count': {     // counting coins into little stacks on the counter, head down
+      const top = o.counter ?? 22, k = o.phase ?? 0;
+      P.spine = [0, 18, 0]; P.head = [0, 22, 0];
+      P.arms = { R: { hand: r([-2.5 + k * 1.5, top + 1.4 + k * 0.8, reach * 0.62]), grip: 0.7, wrist: [50, 0, 0] }, L: { hand: r([4, top + 1, reach * 0.55]), grip: 0.1, wrist: [70, 0, 0] } };
+      break;
+    }
+    case 'peek': {      // leaning toward the window, one hand on the counter, the other shading his eyes
+      const top = o.counter ?? 22, hy = D.hipH + D.waistUp + D.chestUp + D.neckUp + D.headUp;
+      P.spine = [-10, 10, -6]; P.head = [-26, -4, 0]; P.hip = r([-0.8, 0, 0.5]);
+      P.arms = { R: { hand: r([-1.2, hy + 1.8, 7.5]), grip: 0.1, spread: 0.6, wrist: [-20, 60, 0], pole: r([-12, hy - 10, 3]) }, L: { hand: r([5, top + 1, reach * 0.5]), grip: 0.1, wrist: [70, 0, 0] } };
+      break;
+    }
     case 'bump': {      // bounced back off the invisible wall
       P.spine = [0, -14, -6]; P.head = [0, -16, 8]; P.hip = r([0, -1.5, -2]);
       P.arms = { L: { hand: r([D.shoulderW + 6, shY + 2, 3]), grip: 0, spread: 1 }, R: { hand: r([-D.shoulderW - 6, shY + 2, 3]), grip: 0, spread: 1 } };
@@ -198,5 +223,9 @@ export function pose(D, name, o = {}) {
   if (o.head) P.head = o.head;
   if (o.props) P.props = [...(P.props || []), ...o.props];
   Object.assign(P, o.extra || {});
+  // a shot can set a hand directly (body coordinates, turned by the yaw), or a body part's angles
+  if (o.armsSet) for (const [side, A] of Object.entries(o.armsSet)) P.arms = { ...(P.arms || {}), [side]: { ...((P.arms || {})[side] || {}), ...A, ...(A.hand ? { hand: r(A.hand), off: undefined } : {}), ...(A.pole ? { pole: r(A.pole) } : {}) } };
+  if (o.spine) P.spine = o.spine;
+  if (o.hipSet) P.hip = r(o.hipSet);
   return P;
 }

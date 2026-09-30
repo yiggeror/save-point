@@ -11,7 +11,7 @@ import { drawView } from './view.js';
 import { lightPoly, lightRadial } from './light.js';
 
 // ------------------------------------------------------------------ palettes per design option
-function palettes(opt) {
+export function palettes(opt) {
   const common = {
     ink: RX('shop.ink', ['#2a1d1e'])[0],
     glass: R('shop.glass', '#a9c6d6', 6, { lo: 0.42, hi: 0.97, cool: 250 }),
@@ -106,6 +106,7 @@ export function drawShop(S, o = {}) {
 
 /** the candle on the counter: len 1 = new, 0 = burnt down; lit or not */
 export const CANDLE = { X: 238, Z: 47 };
+const MOTE = RX('shop.mote', ['#f6e2b8', '#fff6e0'], EMIT);
 function candle(S, pal, c, t) {
   const [x, yb] = P(CANDLE.X, LAYOUT.counter.h, CANDLE.Z), y = Math.round(yb);
   S.curZ = CANDLE.Z;
@@ -142,6 +143,14 @@ export function shopLight(S, o = {}) {
     lightPoly(S, [a, b, c, d].map(([x, y]) => [x, Math.min(179, y)]), strength, { soft: 1.5, cls: 2, only: (x, y) => y >= FLOOR - 1 && !S.fig?.[y * S.w + x] });
     // the beam through the air: one step, from the window down to its patch on the floor
     lightPoly(S, [[W.x + 4, W.y + W.h], [W.x + W.w - 4, W.y + W.h], b, a], 1, { soft: 3, cls: 2 });
+    // dust drifting slowly down the beam, catching the light
+    for (let i = 0; i < 34; i++) {
+      const hs = (k) => { let h = (Math.imul(i, 374761393) + Math.imul(k, 668265263)) >>> 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+      const w = hs(62), ph = hs(63) * 6.28, k = ((hs(61) + t * 0.01 * (0.5 + hs(64))) % 1 + 1) % 1;
+      const x0 = W.x + 4 + (W.w - 8) * w, y0 = W.y + W.h, x1 = a[0] + (b[0] - a[0]) * w, y1 = a[1];
+      const x = x0 + (x1 - x0) * k + Math.sin(t * 0.7 + ph) * 1.5, y = y0 + (y1 - y0) * k + Math.sin(t * 0.5 + ph * 2);
+      if (y < FLOOR - 1) S.set(Math.round(x), Math.round(y), MOTE[Math.sin(t * 2.3 + ph) > 0.7 ? 1 : 0]);
+    }
     return { patch: [a, b, c, d], dx, dy, dz };
   }
   if (o.candle?.lit) {
@@ -552,6 +561,16 @@ function backCabinet(S, pal, opt, t, hour) {
     if (ic === 2) { S.set(dx + 4, dy + 2, pal.gold[4]); S.hline(dx + 3, dx + 5, dy + 3, pal.gold[3]); S.set(dx + 4, dy + 4, pal.gold[3]); }
     if (ic === 3) { S.set(dx + 3, dy + 2, pal.purple[3]); S.set(dx + 3, dy + 3, pal.purple[3]); S.set(dx + 4, dy + 4, pal.purple[3]); S.set(dx + 5, dy + 4, pal.purple[2]); }
     S.set(dx + 4, dy + 6, pal.brass[4]); S.set(dx + 4, dy + 7, pal.brass[1]);
+  }
+  // a little flask of something green on the cabinet, always bubbling
+  { const fx = x0 + 52, fy = top - 3;
+    S.ellipse(fx + 0.5, fy - 3.5, 4, 3.6, pal.glass[1]); S.ellipse(fx + 0.5, fy - 3, 3.2, 2.8, pal.green[3]); S.ellipse(fx - 0.5, fy - 4, 1.5, 1, pal.green[4]);
+    S.rect(fx - 1, fy - 11, 3, 5, pal.glass[2]); S.vline(fx - 1, fy - 11, fy - 7, pal.glass[4]); S.rect(fx - 1, fy - 12, 3, 1, pal.cork[3]);
+    S.set(fx - 2, fy - 5, pal.glass[5], NOLIGHT);
+    for (let k = 0; k < 4; k++) {
+      const ph = (t * 0.8 + k / 4 + Math.sin(k * 3.1) * 0.1) % 1, bx = fx + Math.round(Math.sin(ph * 9 + k * 2) * 1.2), by = fy - 2 - Math.round(ph * 9);
+      if (ph < 0.9) S.set(bx, by, by > fy - 6 ? pal.green[5] : pal.glass[4], NOLIGHT);
+    }
   }
   // the tea corner: a little iron stove with a kettle, steam, cups on hooks
   const sx = x0 + 66, sy = top - 3;

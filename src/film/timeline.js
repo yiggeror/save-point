@@ -71,23 +71,23 @@ function build() {
   const section = (id, name, t0, t1) => SECTIONS.push({ id, name, t0: +t0.toFixed(4), t1: +t1.toFixed(4) });
 
   // ---------------- ① opening: black, the save icon, the map loading row by row
-  T.saveIcon = [0.4, 2.0];
-  for (let t = 0.6; t < 2.0; t += 0.6) ev(t, 'saveTick');
-  T.map = [2.0, 6.6]; T.mapRows = 23;
+  T.saveIcon = [0.3, 1.6];
+  for (let t = 0.5; t < 1.6; t += 0.55) ev(t, 'saveTick');
+  T.map = [1.6, 5.3]; T.mapRows = 23;
   for (let i = 0; i < T.mapRows; i++) ev(T.map[0] + (T.map[1] - T.map[0]) * i / T.mapRows, 'mapRow', { i });
-  shot(0, 2.0, 'black', '黑场，存档图标在转');
-  shot(2.0, 7.0, 'W', '道具店像读地图一样一行一行铺出来', { load: true });
+  shot(0, 1.6, 'black', '黑场，存档图标在转');
+  shot(1.6, 6.3, 'W', '道具店像读地图一样一行一行铺出来', { load: true });
 
   // ---------------- ② – ③ loops 1–3 and the start of 4
   const L = [];
-  L.push(makeLoop(1, 7.0));
+  L.push(makeLoop(1, 6.3));
   L.push(makeLoop(2, L[0].t1, { react: 'notice', ff: [HERO.sword + 2.5, 3] }));
   L.push(makeLoop(3, L[1].t1, { react: 'hint', shift: 4, insert: [beatOf(1), beatOf(3)], chalk: 1, ff: [beatOf(8, 2) + 4, 3] }));
   const L4 = { n: 4, t0: L[2].t1 };
   L4.insert = [L4.t0, L4.t0 + 2 * BAR]; L4.t1 = L4.insert[1];
   T.loops = L; T.loop4 = L4;
-  section('open', '开场', 0, 7.0);
-  section('first', '第一次', 7.0, L[0].t1);
+  section('open', '开场', 0, 6.3);
+  section('first', '第一次', 6.3, L[0].t1);
   section('discover', '发现', L[1].t0, L4.t1);
 
   for (const lp of L) {
@@ -182,35 +182,43 @@ function build() {
   T.quiet = {
     t0: Q, rewind: [Q, Q + 1.0], bell: Q + 2.0, sit: Q + 6.8, look: [Q + 8.2, Q + 12.0], pour: [Q + 12.0, Q + 15.2],
     toFlap: [Q + 15.2, Q + 17.0], shatter: Q + 17.4, walk: [Q + 18.2, Q + 22.0], hand: [Q + 22.0, Q + 24.0], gulp: Q + 24.6,
-    hot: Q + 25.4, brow: Q + 27.0, gifts: [Q + 28.2, Q + 31.0], receipt: [Q + 31.0, Q + 35.4], react: [Q + 35.4, Q + 37.2],
-    refuse: [Q + 37.2, Q + 39.6], t1: Q + 40.2,
+    hot: Q + 25.4, brow: Q + 26.8, leave: [Q + 27.4, Q + 28.4], alone: [Q + 28.4, Q + 30.2], gifts: [Q + 30.2, Q + 33.0],
+    receipt: [Q + 33.0, Q + 37.4], react: [Q + 37.4, Q + 39.2], refuse: [Q + 39.2, Q + 41.6], t1: Q + 42.2, medium: [Q + 21.3, Q + 33.0],
   };
   const q = T.quiet;
   section('quiet', '安静', Q, q.t1);
   ev(q.rewind[0], 'rewind', { dur: 1.0, short: true }); ev(q.bell, 'bell'); ev(q.sit, 'benchSit'); ev(q.pour[0] + 0.4, 'pour', { dur: 2.6 });
   ev(q.shatter, 'shatter'); for (let t = q.walk[0]; t < q.walk[1]; t += 0.5) ev(t, 'step', { who: 'keeper' });
-  ev(q.hand[0] + 1.2, 'cupSet'); ev(q.gulp, 'gulp'); ev(q.hot, 'hot'); ev(q.gifts[0] + 0.5, 'itemSet'); ev(q.gifts[0] + 2.0, 'itemSet'); ev(q.receipt[0] - 0.3, 'paper');
+  ev(q.hand[0] + 1.2, 'cupPass'); ev(q.gulp, 'gulp'); ev(q.hot, 'hot');
+  for (let t = q.leave[0] + 0.3; t < q.leave[1]; t += 0.45) ev(t, 'step', { who: 'keeper' });
+  ev(q.alone[0] + 0.3, 'blow'); ev(q.alone[0] + 1.3, 'sip');
+  for (let t = q.gifts[0]; t < q.gifts[0] + 0.8; t += 0.45) ev(t, 'step', { who: 'keeper' });
+  ev(q.gifts[0] + 1.3, 'shieldSet'); ev(q.gifts[0] + 1.9, 'potionSet'); ev(q.receipt[0] - 0.3, 'paper');
   for (const f of [0.08, 0.2, 0.33, 0.46, 0.62, 0.75]) ev(q.receipt[0] + f * (q.receipt[1] - q.receipt[0]), 'scribble');
   ev(q.react[0] + 0.3, 'paper');
   const MB = new Grid(q.shatter + 0.6, 84, 4);
   T.musicBox = MB;
   CUES.push({ id: 'musicbox', name: '安静：八音盒，主题放慢', kind: 'musicbox', t0: MB.t0, t1: q.t1, grid: MB.spec(), fermata: [q.hand[1] - 0.2, q.brow + 0.6], hot: q.hot });
   shot(Q, q.rewind[1], 'W', '读档（最后一次）', { rewind: true });
-  shot(q.rewind[1], q.hand[0], 'W', '勇者没有走向柜台，在长凳上坐下。安静。店主第一次走出柜台，边界碎开', {});
-  shot(q.hand[0], q.gifts[0], 'W', '递茶、握杯、太烫、吐舌头（中景在正片里重画）', { medium: 'bench' });
-  shot(q.gifts[0], q.receipt[0], 'W', '店主把盾、药水放在他身边，掏出一张收据和红蓝铅笔', {});
+  shot(q.rewind[1], q.medium[0], 'W', '勇者没有走向柜台，在长凳上坐下。安静。店主第一次走出柜台（在边界前停了一下），边界碎开', {});
+  shot(q.medium[0], q.leave[1], 'medium', '中景：递茶、双手接杯、一口喝下、太烫、吐舌头扇风。店主挑眉，转身出画', {});
+  shot(q.leave[1], q.gifts[0], 'medium', '中景：勇者一个人对着茶吹气，小心地抿一口——好喝', {});
+  shot(q.gifts[0], q.receipt[0], 'medium', '中景：店主拿着盾和药水回来，放在他身边，掏出收据和红蓝铅笔', {});
   shot(q.receipt[0], q.receipt[1], 'receipt', '收据特写：蓝笔画魔王（弯角和塔顶的角一样），红笔圈住左边的角，剑和箭头指过去', {});
-  shot(q.receipt[1], q.t1, 'W', '勇者接过收据："!"，眼睛发亮，用力点头。要付钱，店主把钱袋按回去，摇头', {});
+  shot(q.receipt[1], q.t1, 'medium', '中景：勇者接过收据："!"，眼睛发亮，用力点头。要付钱，店主把钱袋按回去，摇头', {});
 
   // ---------------- ⑥ the wait: the clock goes past 7:12; day, dusk, night; flashes; no game over
   const Wt = q.t1;
   T.wait = {
     t0: Wt, leave: [Wt, Wt + 2.4], clock: [Wt + 2.8, Wt + 6.8], pass: Wt + 5.0, lapse: [Wt + 6.8, Wt + 13.8], candle: Wt + 12.4,
-    tower: [Wt + 13.8, Wt + 18.4], flashes: [Wt + 14.4, Wt + 15.8, Wt + 17.0], candleShot: [Wt + 18.4, Wt + 21.2], last: Wt + 23.4, t1: Wt + 26.0,
+    tower: [Wt + 13.8, Wt + 17.6], flashes: [Wt + 14.4, Wt + 15.6, Wt + 16.8], candleShot: [Wt + 17.6, Wt + 20.2], last: Wt + 22.4, t1: Wt + 25.0,
   };
   const w = T.wait;
   section('wait', '等待', Wt, w.t1);
   ev(w.leave[0] + 0.6, 'bell'); ev(w.pass, 'clockPass'); ev(w.candle, 'match');
+  ev(Wt + 0.2, 'benchSit', { up: true });
+  for (let t = Wt + 0.95; t < w.leave[1]; t += 0.3) ev(t, 'step', { who: 'hero' });
+  for (let t = Wt + 1.5; t < Wt + 5.4; t += 0.45) ev(t, 'step', { who: 'keeper' });
   w.glitch = [w.pass - 0.45, w.pass + 0.15];                 // at 7:12 the picture starts to rewind … and doesn't
   ev(w.glitch[0], 'saveTick'); ev(w.glitch[0], 'rewindAbort');
   for (const f of w.flashes) ev(f, 'towerFlash'); ev(w.last, 'towerFlash', { last: true });

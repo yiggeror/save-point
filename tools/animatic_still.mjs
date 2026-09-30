@@ -1,5 +1,5 @@
 // render animatic stills at given times: node tools/animatic_still.mjs t1,t2,… [scale] → build/still.png (stacked in a grid of 3)
-import { setup, frameRGB, AW, AH } from '../src/film/animatic.js';
+import { setup, frameRGB, AW, AH } from '../src/film/film.js';
 import { writePNG, upscale } from '../src/pix/png.js';
 await setup();
 const ts = process.argv[2].split(',').map(Number), k = +(process.argv[3] || 2);

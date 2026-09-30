@@ -4,7 +4,7 @@
 // node tools/sheet_closeups.mjs
 import { Surface, text, loadFont, ramp } from '../src/pix/gfx.js';
 import { writePNG, upscale } from '../src/pix/png.js';
-import { setup, frameRGB, AW } from '../src/film/animatic.js';
+import { setup, frameRGB, AW } from '../src/film/film.js';
 import { TL } from '../src/film/timeline.js';
 import { windowInsert } from '../src/set/view.js';
 import { grader } from '../src/set/light.js';
