@@ -207,10 +207,10 @@ def return_cue():
     return per_inst(A, 'return', length=end + 0.6)
 
 def credits():
-    """credits: the bridge, then A′'s last phrase, the whole band, closing on F"""
+    """credits: the end of the bridge, then A′'s last phrase, the whole band, closing on F"""
     A = Arr(); g = Grid(0, 120)
-    for bar, tb in enumerate([17, 18, 19, 20, 13, 14, 15, 16], start=1): band(A, g, bar, tb)
-    for q in ['F2', 'C3', 'A3', 'C4', 'F4', 'A4']: A.n(g.at(8), 2.2, q, 50, 'harp' if q != 'F2' else 'bass')
+    for bar, tb in enumerate([19, 20, 13, 14, 15, 16], start=1): band(A, g, bar, tb)
+    for q in ['F2', 'C3', 'A3', 'C4', 'F4', 'A4']: A.n(g.at(6), 2.2, q, 50, 'harp' if q != 'F2' else 'bass')
     end = C['credits']['t1'] - C['credits']['grid']['t0']
     A.clamp(end, release=0.4)
     return per_inst(A, 'credits', length=end + 0.5)

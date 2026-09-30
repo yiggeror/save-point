@@ -7,7 +7,7 @@ A dialogue-free pixel-art short (in production). Every frame is computed in code
 
 ## 现在在哪一步
 
-检查点 3：音乐小样和粗动态分镜等确认。看 `film/animatic-1080p.mp4`，听 `music/theme-demo.m4a`；说明见 [`docs/music.md`](docs/music.md)、[`docs/shots.md`](docs/shots.md)、[`docs/cue-sheet.md`](docs/cue-sheet.md)，进度见 [`PROGRESS.md`](PROGRESS.md)。
+检查点 3（按意见修改后）：窗外重画、补了几个让故事看得懂的特写、特写全部重画。看 `film/animatic-1080p.mp4`、`design/window-view.png`、`design/closeups.png`，听 `music/theme-demo.m4a`；说明见 [`docs/music.md`](docs/music.md)、[`docs/shots.md`](docs/shots.md)、[`docs/cue-sheet.md`](docs/cue-sheet.md)，进度见 [`PROGRESS.md`](PROGRESS.md)。
 
 ## 怎么做的（简）
 
@@ -29,6 +29,7 @@ python3 production/audio/score.py  # 配乐各段 → build/audio/*.wav
 python3 production/audio/mix.py    # 声轨 → build/audio/soundtrack.wav，段落表 → docs/cue-sheet.md
 node tools/render_animatic.mjs     # 动态分镜 → film/animatic-1080p.mp4
 node tools/shot_list.mjs           # 镜头表 → docs/shots.md
+node tools/sheet_closeups.mjs      # 窗外和特写的样张 → design/window-view.png、design/closeups.png
 ```
 
 ## 许可

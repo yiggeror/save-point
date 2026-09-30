@@ -7,7 +7,8 @@ import { render, oblique, camera } from '../rig/sdf.js';
 import { drawFace } from '../rig/face.js';
 import { pose } from '../rig/poses.js';
 import { drawShop, shopLight, LAYOUT, CANDLE, doorBell, shieldProp } from '../set/shop.js';
-import { drawOutside } from '../set/outside.js';
+import { windowInsert, drawView, pathAt, DEATH_U } from '../set/view.js';
+import { drawTally as tallyInsert, drawTag as tagInsert, drawReceipt, drawMapInsert as mapInsertDraw, drawPush, drawClock, drawCandle, wallBackdrop, CHALK_ID } from './inserts.js';
 import { grader } from '../set/light.js';
 import { P as proj, R as RMP, tag as drawTag, digits } from '../set/kit.js';
 import { emote } from '../ui/emotes.js';
@@ -156,6 +157,7 @@ export function stateAt(t) {
       st.loop = lp; st.keeper = keeperInLoop(lp, t); st.hero = heroInLoop(lp, t); Object.assign(st.ui, loopUI(lp, t, st.hero));
       if (inside(t, lp.ft(lp.s(HERO.window)), lp.rw[0])) st.windowHero = { lp, u: clamp((lp.sb(t) - lp.s(HERO.window)) / (lp.flashB - lp.s(HERO.window)), 0, 1), death: 'flash', flash: t - lp.flashT };
       if (lp.chalk && inside(t, lp.t0, lp.ft(lp.insert[1]))) st.tally = { count: 1, draw: clamp((t - lp.t0 - 0.9 * BAR) / 0.6, 0, 1) };
+      if (lp.tagGlance && inside(t, ...lp.tagGlance)) st.tagInsert = { u: 0 };
       return st;
     }
     if (inside(t, lp.rw[0], lp.rw[1])) {
@@ -164,6 +166,7 @@ export function stateAt(t) {
       const s2 = stateAt(tb);
       s2.t = t; s2.fx.rewind = u;
       s2.ui = { emotes: [], save: { phase: -t * 2 } }; s2.windowHero = null; s2.tally = null; s2.tagInsert = null;
+      if (lp.ruleCut && t >= lp.ruleCut) { s2.tally = { count: 1, draw: 1, fresh: false }; s2.fx.keepChalk = true; }
       s2.shot = TL.SHOTS.find((s) => t >= s.t0 && t < s.t1) || s2.shot;
       return s2;
     }
@@ -171,7 +174,8 @@ export function stateAt(t) {
   // ---- loop 4's opening: the rule
   if (inside(t, T.loop4.t0, T.loop4.t1)) {
     st.keeper = at(...MK.keeper, 0, 'npcWipe', { phase: 0, counter: 22 });
-    st.tally = { count: 2, draw: clamp((t - T.loop4.t0 - 1.2 * BAR) / 0.6, 0, 1), rule: clamp((t - T.loop4.t0) / (1.2 * BAR), 0, 1) };
+    const d0 = T.loop4.t0 + 1.2 * BAR;
+    st.tally = { count: t < d0 ? 1 : 2, draw: t < d0 ? 1 : clamp((t - d0) / 0.6, 0, 1), fresh: t >= d0, touch: t > T.loop4.t0 + 0.3 * BAR && t < d0 - 0.1 ? 1 : null };
     return st;
   }
   // ---- montage
@@ -240,7 +244,9 @@ function montageState(st, t) {
       k < 6 ? at(...MK.door.map((v, i) => v + (i ? 8 : 4)), 180, 'stand', { head: [0, 20, 0] }, { eyes: 'wide' }) :
       k < 8 ? walkAct(heroA, [MK.door[0] + 4, MK.door[1] + 8], C, lb(6), lb(8), t, { bounce: 1.4, step: BEAT / 3 }) :
       k < 9 ? at(...C, HERO_YAW_COUNTER, 'slap', { counter: 22 }, { mouth: { curve: -0.3 } }) : k < 10.5 ? at(...C, 20, 'salute', {}, { brow: 0.6 }) : exitQuick(10.5, 12));
-    if (k >= 5 && k < 6) st.ui.emotes.push({ who: 'hero', kind: '!' });
+    // at the door he finds it: '!' and the item he didn't pay for, the way a game shows a found item
+    if (k >= 4.6 && k < 5.2) st.ui.emotes.push({ who: 'hero', kind: '!' });
+    if (k >= 5.2 && k < 6.6) st.ui.emotes.push({ who: 'hero', kind: 'potion' });
     if (k >= 8.5 && k < 10) st.ui.emotes.push({ who: 'keeper', kind: '…' });
     st.potionOnCounter = k >= 8.5;
     return st;
@@ -248,8 +254,9 @@ function montageState(st, t) {
   if (gag === 'map') {
     st.keeper = k < 2 ? at(...K, 0, 'npcWipe', { phase: Math.floor(k * 2) % 2, counter: 22 }, { brow: 0.8 }) : at(...K, KEEPER_YAW_HERO, 'stand', {}, k < 5 ? { brow: 0.6 } : { eyes: 'half', browTilt: 1 });
     st.hero = heroQuick(0, 1.5) || (k < 4 ? at(...C, HERO_YAW_COUNTER, 'carry', { headPitch: 22 }, { brow: 0.6, mouth: { grin: 1 } }) : k < 5.5 ? at(...C, 40, 'salute', {}, { brow: 0.6 }) : exitQuick(5.5, 8));
-    if (k >= 2.5 && k < 5) st.ui.emotes.push({ who: 'hero', kind: '✦' });
-    st.upsideDownMap = k >= 2 && k < 5.5;
+    if (k >= 4.5 && k < 5.5) st.ui.emotes.push({ who: 'hero', kind: '✦' });
+    if (k >= 4.6 && k < 6.5) st.ui.emotes.push({ who: 'keeper', kind: '…' });
+    if (inside(t, ...T.mapInsert)) st.mapInsert = { u: (t - T.mapInsert[0]) / (T.mapInsert[1] - T.mapInsert[0]) };
     return st;
   }
   if (gag === 'wall') {
@@ -286,7 +293,8 @@ function quietState(st, t) {
   else if (t < q.walk[1]) st.keeper = walkAct(keeperA, MK.flapIn, [MK.benchFront[0] + 20, MK.benchFront[1] + 4], q.shatter + 0.6, q.walk[1], t, { pose: 'carry', step: 0.45, extra: { props: [{ hand: 'R', kind: 'cup' }] } });
   else if (t < q.hand[1]) st.keeper = at(MK.benchFront[0] + 20, MK.benchFront[1] + 4, -110, 'offerCup', {}, { brow: 0.3, stache: 0.3 });
   else if (t < q.gifts[0]) st.keeper = at(MK.benchFront[0] + 20, MK.benchFront[1] + 4, -110, 'stand', {}, t > q.brow ? { browL: 1.4, stache: 0.3 } : {});
-  else if (t < q.refuse[0]) st.keeper = at(MK.benchFront[0] + 18, MK.benchFront[1] + 2, -120, 'push', { counter: 14 }, {});
+  else if (t < q.receipt[1]) st.keeper = at(MK.benchFront[0] + 18, MK.benchFront[1] + 2, -120, 'push', { counter: 14 }, {});
+  else if (t < q.refuse[0]) st.keeper = at(MK.benchFront[0] + 20, MK.benchFront[1] + 4, -110, 'stand', {}, { eyes: 'happy', stache: 0.5 });
   else st.keeper = at(MK.benchFront[0] + 20, MK.benchFront[1] + 4, -110, 'stand', { head: [Math.sin((t - q.refuse[0]) * 9) * 25, 4, 0] }, { eyes: 'happy', stache: 0.5 });
   // the hero: the identical entrance (without music), then the bench
   const bellT = q.bell, B = (b) => bellT + (b - HERO.bell) * BEAT;
@@ -298,10 +306,19 @@ function quietState(st, t) {
   else if (t < q.gulp) st.hero = at(...MK.bench, 30, 'sit', { seat: 16, head: [20, -4, 0] }, { eyes: 'wide', brow: 0.6 });
   else if (t < q.hot) st.hero = at(...MK.bench, 30, 'sit', { seat: 16, extra: {} }, { eyes: 'closed' });
   else if (t < q.gifts[0]) st.hero = at(...MK.bench, 30, 'sit', { seat: 16 }, { eyes: 'closed', browTilt: 1.2, mouth: { open: 1.5, tongue: 1 } });
-  else st.hero = at(...MK.bench, 30, 'sit', { seat: 16, head: [30, 4, 0] }, t < q.refuse[0] ? { eyes: 'wide', brow: 0.8 } : { eyes: 'happy', brow: 0.5, mouth: { curve: 1, w: 3 } });
+  else if (t < q.react[0]) st.hero = at(...MK.bench, 30, 'sit', { seat: 16, head: [30, 4, 0] }, { eyes: 'wide', brow: 0.8 });
+  else if (t < q.refuse[0]) {
+    // he takes the receipt, looks at it — '!' — then nods, hard, the way he nods at everything
+    const nod = t > q.react[0] + 0.9 ? Math.max(0, Math.sin((t - q.react[0] - 0.9) * 11)) * 16 : 0;
+    st.hero = at(...MK.bench, 30, 'sit', { seat: 16, head: [20, 18 + nod, 0] }, t < q.react[0] + 0.9 ? { eyes: 'wide', brow: 1.0 } : { eyes: 'happy', brow: 0.8, mouth: { grin: 1 } });
+  }
+  else st.hero = at(...MK.bench, 30, 'sit', { seat: 16, head: [30, 4, 0] }, { eyes: 'happy', brow: 0.5, mouth: { curve: 1, w: 3 } });
+  st.receiptInHand = t >= q.react[0];
   if (inside(t, q.bell, q.bell + 1.1)) st.ui.hud = { gold: 50 };
   if (inside(t, q.look[0] + 1.0, q.look[1])) st.ui.emotes.push({ who: 'keeper', kind: '…' });
   if (inside(t, q.hot, q.hot + 1.6)) st.ui.emotes.push({ who: 'hero', kind: '!' });
+  if (inside(t, q.react[0] + 0.15, q.react[0] + 0.9)) st.ui.emotes.push({ who: 'hero', kind: '!' });
+  if (inside(t, q.react[0] + 0.9, q.react[1])) st.ui.emotes.push({ who: 'hero', kind: '✦' });
   if (inside(t, q.refuse[0] + 1.0, q.t1)) st.ui.emotes.push({ who: 'hero', kind: '♥' });
   st.boundary = t < q.shatter ? { lit: inside(t, q.toFlap[1] - 0.2, q.shatter) ? 1 : 0 } : { shatter: t - q.shatter };
   st.gifts = t >= q.gifts[0] ? clamp((t - q.gifts[0]) / (q.gifts[1] - q.gifts[0]), 0, 1) : 0;
@@ -317,6 +334,7 @@ function waitState(st, t) {
   st.keeper = t < w.leave[1] + 1 ? at(...MK.keeper, KEEPER_YAW_HERO, 'stand', {}, { brow: 0.4 }) : at(...MK.keeper, 0, 'stand', { head: [-30, 4, 0] }, { eyes: t > w.last ? 'half' : 'open', brow: 0.2 });
   if (t > w.candle) st.candle = { lit: true, len: clamp(1 - (t - w.candle) / 20, 0.35, 1) };
   if (inside(t, w.clock[0], w.clock[1])) st.clockInsert = { pass: w.pass, t };
+  if (inside(t, ...w.glitch)) { st.fx.glitch = (t - w.glitch[0]) / (w.glitch[1] - w.glitch[0]); st.ui.save = { phase: t * 2 }; }
   if (inside(t, w.tower[0], w.tower[1]) || (t >= w.last - 0.4 && t < w.last + 1.6)) st.windowHero = { night: true, flashes: [...w.flashes, w.last], t };
   return st;
 }
@@ -325,6 +343,7 @@ function waitState(st, t) {
 function returnState(st, t) {
   const r = T.ret, w = T.wait;
   st.candle = { lit: false, len: 0.3 };
+  st.defeated = true;                                      // outside, the storm over the tower is gone
   st.keeper = t < r.thunk ? at(...MK.keeper, KEEPER_YAW_HERO, 'stand', {}, { eyes: 'wide', brow: 1.0 }) :
     t < r.wave[1] ? at(...MK.keeper, KEEPER_YAW_HERO, 'stand', {}, { eyes: 'happy', stache: 0.6 }) :
     t < r.horn[1] ? walkAct(keeperA, MK.keeper, [MK.flapIn[0] - 20, 44], r.wave[1], r.wave[1] + 1.6, t, { step: 0.45 }) : at(...MK.keeper, 0, 'stand', {}, { eyes: 'happy', stache: 0.4 });
@@ -380,28 +399,35 @@ function film(t) {
   const st = stateAt(t);
   const S = new Surface(320, 180); S.clear(0);
   const kind = st.black ? 'black' : st.credits != null ? 'credits' : st.portrait ? 'portrait' : st.tagInsert ? 'tag' : st.clockInsert ? 'clock'
+    : st.mapInsert ? 'map' : st.shot.kind === 'receipt' ? 'receipt' : st.shot.kind === 'push' ? 'push'
     : (st.shot.kind === 'candle') ? 'candle' : st.tally && (st.shot.kind === 'tally') ? 'tally' : st.shot.kind === 'window' ? 'window' : st.shot.kind === 'black' ? 'black' : 'W';
   st.kind = kind;
   if (kind === 'black') return { S, st, grade: null, black: true };
   if (kind === 'credits') { drawCredits(S, st.credits); return { S, st }; }
   if (kind === 'window') { drawWindowInsert(S, st, t); return { S, st, grade: grader(st.hour, S) }; }
-  if (kind === 'tally') { drawTally(S, st.tally, t); return { S, st, grade: grader(7.1, S) }; }
-  if (kind === 'tag') { drawTagInsert(S, st.tagInsert.u); return { S, st, grade: grader(7.05, S) }; }
-  if (kind === 'clock') { drawClockInsert(S, st.clockInsert, t); return { S, st, grade: grader(st.hour, S) }; }
-  if (kind === 'candle') { drawCandleInsert(S, t); return { S, st, grade: grader(23.5, S) }; }
+  if (kind === 'tally') { tallyInsert(S, st.tally, t); return { S, st, grade: grader(7.1, S) }; }
+  if (kind === 'tag') { tagInsert(S, st.tagInsert.u, t); return { S, st, grade: grader(7.05, S) }; }
+  if (kind === 'map') { mapInsertDraw(S, st.mapInsert.u, t); return { S, st, grade: grader(7.1, S) }; }
+  if (kind === 'receipt') { drawReceipt(S, (t - st.shot.t0) / (st.shot.t1 - st.shot.t0), t); return { S, st, grade: grader(st.hour, S) }; }
+  if (kind === 'push') { drawPush(S, (t - st.shot.t0) / (st.shot.t1 - st.shot.t0), t); return { S, st, grade: grader(7.0, S) }; }
+  if (kind === 'clock') { drawClock(S, st.clockInsert, t); if (st.ui.save) saveIcon(S, 308, 164, st.ui.save.phase % 1, false); return { S, st, grade: grader(st.hour, S) }; }
+  if (kind === 'candle') { drawCandle(S, t, { len: st.candle ? st.candle.len : 0.5 }); return { S, st, grade: grader(23.5, S) }; }
   if (kind === 'portrait') { drawPortrait(S, st.portrait.u); return { S, st, grade: grader(6.0, S) }; }
   // ---- the wide shot
   const hour = st.hour;
-  drawShop(S, { opt: 'A', hour, t, door: st.door, candle: st.candle, clock: hour, towerFlash: st.windowHero && st.windowHero.flash > 0 && st.windowHero.flash < 0.3 ? 1 : 0 });
+  const wh = st.windowHero;
+  const towerFlash = wh && ((wh.flash > 0 && wh.flash < 0.3) || (wh.night && wh.flashes.some((f) => t >= f && t < f + 0.3))) ? 1 : 0;
+  drawShop(S, { opt: 'A', hour, t, door: st.door, candle: st.candle, clock: hour, towerFlash, battle: wh && wh.night ? wh.flashes : null, defeated: st.defeated });
   if (st.tagChanged) { const L = LAYOUT.shield; drawTag(S, L.x - 7, L.y + 16, 50, tagPal()); chalkOverTag(S, L.x - 5, L.y + 18); }
   if (st.horn === 'wall') hornOnWall(S);
   if (st.horn === 'counter') hornOnCounter(S);
   if (st.potionOnCounter) potionOnCounter(S);
-  if (st.gifts) giftsOnBench(S, st.gifts);
+  if (st.gifts) giftsOnBench(S, st.gifts, st.receiptInHand);
   if (st.pushed != null) pushedItems(S, st.pushed);
   const kInfo = drawActor(S, keeperA, st.keeper);
   const hInfo = drawActor(S, st.heroD || heroA, st.hero);
   if (st.horn === 'carried' && hInfo) hornShape(S, Math.round(hInfo.x) - 14, Math.round(hInfo.R.y0) + 10, 1);
+  if (st.receiptInHand && hInfo) receiptInHand(S, Math.round(hInfo.x) + RIH[0], Math.round(hInfo.y) + RIH[1]);
   if (st.boundary) drawBoundary(S, st.boundary, t);
   if (st.grid) drawGrid(S, st.grid.flash);
   shopLight(S, { hour, candle: st.candle, t });
@@ -439,11 +465,19 @@ function hornShape(S, x, y, sc) {
   }
 }
 function potionOnCounter(S) { const x = 216, y = 118; S.rect(x, y - 5, 4, 5, RMP('shop.red', '#c2413d', 6, { cool: 330 })[3]); S.rect(x + 1, y - 7, 2, 2, RMP('shop.cork', '#b98a58', 6)[3]); }
-function giftsOnBench(S, u) {
+function giftsOnBench(S, u, inHand) {
   const pal = { iron: RMP('shop.iron', '#6f7580', 6, { cool: 260 }), steel: RMP('shop.steel', '#aab4c2', 6, { cool: 250, hi: 0.97 }), trim: RMP('A.trim', '#c49a66', 6, { lo: 0.34, hi: 0.88, cool: 320, shift: 0.25 }) };
   if (u > 0.1) { shieldProp(S, pal, 100, 104); }
   if (u > 0.45) { S.rect(90, 104, 4, 5, RMP('shop.red', '#c2413d', 6, { cool: 330 })[3]); S.rect(91, 102, 2, 2, RMP('shop.cork', '#b98a58', 6)[3]); }
-  if (u > 0.75) { const p = RMP('shop.paper', '#eadcb8', 6, { lo: 0.5, hi: 0.97 }); S.rect(76, 106, 9, 3, p[4]); S.hline(76, 84, 108, p[2]); S.set(80, 107, INK[0]); }
+  const p = RMP('shop.paper', '#eadcb8', 6, { lo: 0.5, hi: 0.97 });
+
+}
+const RIH = [5, -24];
+function receiptInHand(S, x, y) {
+  // the receipt held up in both hands: paper, the blue doodle and the red circle, tiny
+  const p = RMP('shop.paper', '#eadcb8', 6, { lo: 0.5, hi: 0.97 }), red = RMP('ins.redp2', '#d0443a', 3)[1], blue = RMP('ins.blue2', '#3f68c2', 3)[1];
+  S.rect(x, y, 9, 7, p[4]); S.hline(x, x + 8, y, p[5]); S.hline(x, x + 8, y + 6, p[2]); S.vline(x + 8, y + 1, y + 6, p[3]);
+  S.set(x + 4, y + 3, blue); S.set(x + 5, y + 3, blue); S.set(x + 4, y + 4, blue); S.set(x + 3, y + 2, blue); S.set(x + 6, y + 2, blue); S.set(x + 2, y + 1, red); S.set(x + 3, y + 1, red);
 }
 function pushedItems(S, u) { const x = Math.round(214 - u * 10); S.rect(x, 115, 4, 5, RMP('shop.red', '#c2413d', 6, { cool: 330 })[3]); }
 function drawBoundary(S, b, t) {
@@ -472,119 +506,23 @@ function ffIcon(S, rate) {
 // ------------------------------------------------------------------ inserts (rough: redrawn at more detail in the film)
 function drawWindowInsert(S, st, t) {
   const w = st.windowHero || {};
-  const hour = w.night ? 23.4 : st.hour;
-  let flash = 0;
-  if (w.flashes) for (const f of w.flashes) if (t >= f && t < f + 0.5) flash = 1;
-  if (w.flash != null && w.flash > 0 && w.flash < 0.6) flash = 1;
-  const info = drawOutside(S, 8, 8, 304, 164, { hour, t, zoom: 3.2, towerFlash: flash });
-  // the frame around the view: sash, mullion, sill
-  const F = RMP('A.beam', '#4e342a', 6, { lo: 0.16, hi: 0.52, cool: 320, shift: 0.25 });
-  S.rect(0, 0, 320, 8, F[2]); S.rect(0, 172, 320, 8, F[3]); S.rect(0, 0, 8, 180, F[2]); S.rect(312, 0, 8, 180, F[1]);
-  S.rect(157, 0, 6, 180, F[3]); S.vline(157, 0, 179, F[4]); S.rect(0, 88, 320, 5, F[3]); S.hline(0, 319, 88, F[4]);
-  // the hero: a few pixels on the path
-  const path = info.path;
-  if (w.u != null && !w.night) {
-    const u = w.u, seg = u * (path.length - 1), i = Math.min(path.length - 2, Math.floor(seg)), f = seg - i;
-    let x = lerp(path[i][0], path[i + 1][0], f), y = lerp(path[i][1], path[i + 1][1], f);
-    const sc = clamp(1.6 - u * 1.1, 0.5, 1.6);
-    const hair = heroA.mats[heroA.M.hair].ramp[3], body = heroA.mats[heroA.M.top].ramp[3], cape = heroA.mats[heroA.M.cape].ramp[3];
-    const dead = w.flash != null && w.flash > 0;
-    if (w.death === 'cliff' && dead) y += w.flash * w.flash * 60, x += w.flash * 8;
-    if (w.death === 'slime' && dead) { x += w.flash * 60; y -= Math.sin(Math.min(1, w.flash) * Math.PI) * 40 - w.flash * 20; }
-    if (!(dead && w.death === 'flash' && w.flash > 0.3) && !(dead && w.death === 'fire' && w.flash > 0.4)) {
-      const hgt = Math.max(2, Math.round(6 * sc)), X = Math.round(x), Y = Math.round(y);
-      S.rect(X, Y - hgt, Math.max(1, Math.round(2 * sc)), hgt, body); S.rect(X, Y - hgt - Math.max(1, Math.round(2 * sc)), Math.max(1, Math.round(2 * sc)), Math.max(1, Math.round(2 * sc)), hair);
-      if (sc > 1) S.set(X - 1, Y - hgt + 1, cape);
-    }
-    if (dead && w.death === 'fire' && w.flash < 1.2) { const r = 3 + w.flash * 8; S.ellipse(x, y - 4, r, r * 0.8, RMP('shop.flame2', '#f08a2a', 4)[2]); S.ellipse(x, y - 4, r * 0.6, r * 0.5, RMP('shop.flame3', '#ffd060', 4)[2]); }
-    if (dead && w.death === 'slime' && w.flash < 0.4) { const G = RMP('out.slime', '#6acb5a', 5); S.ellipse(x - 6, y - 2, 5, 3.5, G[2]); S.set(Math.round(x - 7), Math.round(y - 3), G[4]); }
+  const o = { hour: w.night ? 23.4 : st.hour, t };
+  if (w.night) {
+    // the night battle: bursts round the tower, the eye flaring with each; the keeper's candle reflected in the glass
+    o.battle = w.flashes; o.candle = true;
+    if (w.flashes.some((f) => t >= f && t < f + 0.3)) o.eye = 1;
+  } else if (w.u != null) {
+    const dt = w.flash;                                    // seconds since the death (negative before)
+    // the same day every loop: the world outside runs on the loop's script time
+    o.t = w.lp ? 100 + w.lp.sb(t) * BEAT : t;
+    o.hero = { u: w.u, death: w.death, dt, t, from: w.lp ? undefined : DEATH_U[w.death] - (w.death === 'slime' ? 0.1 : 0.14) };
+    if (w.death === 'flash' && dt >= 0 && dt < 0.3) { o.eye = 1; o.flash = Math.max(0, 1 - dt / 0.2); }
+    if (w.death === 'fire' && dt > -1.2 && dt < -0.8) o.eye = 1;
   }
-  if (flash) {
-    const [tx, ty] = info.tower.win;
-    for (let r = 0; r < 3; r++) S.ring(tx + 0.5, ty + 0.5, 4 + r * 5, 4 + r * 5, RMP('out.burst', '#fff2c0', 3)[2 - Math.min(2, r)]);
-  }
-}
-function drawTally(S, tl, t) {
-  // the inside of the counter's front board, lit from above by the shop; chalk marks in fives
-  const W = RMP('A.counter', '#8c4a30', 7, { lo: 0.22, hi: 0.72, at: 3, cool: 330, shift: 0.25 });
-  for (let y = 0; y < 180; y++) for (let x = 0; x < 320; x++) {
-    const board = Math.floor(y / 30), seam = y % 30 === 0;
-    const grain = ((x * 7 + board * 131) % 97 < 3) || ((x + y * 3 + board * 17) % 211 < 2);
-    S.set(x, y, W[seam ? 1 : grain ? 2 : y < 20 ? 2 : 3]);
-  }
-  S.rect(0, 0, 320, 14, W[1]); S.hline(0, 319, 14, W[0]);            // the underside of the counter top
-  const n = tl.count ?? 0, drawN = tl.draw != null ? tl.draw : 1;
-  const mark = (i, part = 1) => {
-    const g = Math.floor(i / 5), k = i % 5;
-    const gx = 26 + (g % 6) * 46, gy = 40 + Math.floor(g / 6) * 50;
-    if (k < 4) { const x = gx + k * 7; for (let y = 0; y < Math.round(30 * part); y++) { S.set(x, gy + y, CH[3]); S.set(x + 1, gy + y, CH[2]); } }
-    else { const L = Math.round(34 * part); for (let j = 0; j < L; j++) { const x = gx - 4 + Math.round(j * 0.95), y = gy + 26 - Math.round(j * 0.62); S.set(x, y, CH[3]); S.set(x, y + 1, CH[2]); } }
-  };
-  for (let i = 0; i < n - 1; i++) mark(i);
-  if (n > 0) mark(n - 1, clamp(drawN, 0, 1));
-  if (tl.star) {
-    const g = Math.floor(n / 5), gx = 26 + (g % 6) * 46 + 10, gy = 40 + Math.floor(g / 6) * 50 + 14;
-    const R = 12 * clamp(tl.star, 0, 1);
-    const pts = []; for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, r = k % 2 ? R * 0.45 : R; pts.push([gx + Math.cos(a) * r, gy + Math.sin(a) * r]); }
-    if (R > 1) { S.poly(pts, CH[3]); }
-  }
-  // the chalk and the hand holding it, while drawing
-  if (drawN < 1 && n > 0) {
-    const i = n - 1, g = Math.floor(i / 5), k = i % 5, gx = 26 + (g % 6) * 46 + (k < 4 ? k * 7 : 12), gy = 40 + Math.floor(g / 6) * 50 + Math.round(30 * drawN);
-    S.rect(gx, gy - 2, 3, 6, CH[3]);
-    const skin = keeperA.mats[keeperA.M.skin].ramp;
-    S.ellipse(gx + 6, gy + 6, 8, 6, skin[3]); S.ellipse(gx + 4, gy + 4, 4, 3, skin[4]); S.ellipse(gx + 14, gy + 16, 9, 7, keeperA.mats[keeperA.M.sleeve].ramp[3]);
-  }
-  if (tl.stop) { S.rect(0, 0, 320, 180, -1); }
-}
-function drawTagInsert(S, u) {
-  const W = RMP('A.wall', '#a4805c', 7, { lo: 0.3, hi: 0.78, at: 3, cool: 300, shift: 0.22 });
-  for (let y = 0; y < 180; y++) for (let x = 0; x < 320; x++) S.set(x, y, W[(x % 40 === 0) ? 1 : ((x * 7 + y) % 53 < 2) ? 2 : 3]);
-  const P = RMP('shop.paper', '#eadcb8', 6, { lo: 0.5, hi: 0.97 });
-  S.rect(100, 50, 120, 84, P[3]); S.hline(100, 219, 50, P[5]); S.vline(100, 50, 133, P[4]); S.hline(100, 219, 133, P[1]); S.vline(219, 51, 133, P[2]);
-  S.ellipse(112, 62, 4, 4, W[2]); S.line(112, 20, 112, 58, INK[1]);
-  const big = (d, x, y, c) => { const D57 = { 8: ['.###.', '#...#', '#...#', '.###.', '#...#', '#...#', '.###.'], 0: ['.###.', '#...#', '#..##', '#.#.#', '##..#', '#...#', '.###.'], 5: ['#####', '#....', '####.', '....#', '....#', '#...#', '.###.'] }[d];
-    D57.forEach((row, j) => [...row].forEach((q, i) => { if (q === '#') S.rect(x + i * 7, y + j * 7, 7, 7, c); })); };
-  big(0, 164, 66, INK[0]);
-  if (u < 0.45) big(8, 116, 66, INK[0]);
-  else { big(8, 116, 66, INK[0]); S.rect(116, 66, 36, 50, P[3]); big(5, 116, 66, CH[3]); }
-  const hx = u < 0.45 ? 140 : 150 + (u - 0.45) * 60, hy = 110 - Math.sin(u * 12) * 6;
-  const skin = keeperA.mats[keeperA.M.skin].ramp;
-  S.rect(Math.round(hx) - 2, Math.round(hy) - 14, 5, 12, CH[3]);
-  S.ellipse(hx + 8, hy + 6, 16, 12, skin[3]); S.ellipse(hx + 4, hy + 2, 8, 6, skin[4]); S.ellipse(hx + 26, hy + 26, 20, 16, keeperA.mats[keeperA.M.sleeve].ramp[3]);
-}
-function drawClockInsert(S, c, t) {
-  const W = RMP('A.wall', '#a4805c', 7, { lo: 0.3, hi: 0.78, at: 3, cool: 300, shift: 0.22 });
-  S.rect(0, 0, 320, 180, W[2]);
-  const B = RMP('A.beam', '#4e342a', 6, { lo: 0.16, hi: 0.52, cool: 320, shift: 0.25 }), BR = RMP('shop.brass', '#c79a45', 6, { cool: 20, shift: 0.3 }), CR = RMP('shop.cream', '#e8dcc0', 6, { lo: 0.45, hi: 0.97 });
-  S.rect(90, 0, 140, 180, B[2]); S.ellipse(160, 90, 72, 72, BR[2]); S.ellipse(160, 90, 66, 66, CR[4]);
-  for (let k = 0; k < 60; k++) { const a = k / 60 * Math.PI * 2, r0 = k % 5 === 0 ? 54 : 58; for (let r = r0; r < 62; r++) S.set(Math.round(160 + Math.sin(a) * r), Math.round(90 - Math.cos(a) * r), k % 5 === 0 ? INK[0] : CR[2]); }
-  // the chalk mark he made at 7:12, just outside the dial
-  const am = 12 / 60 * Math.PI * 2; for (let r = 63; r < 70; r++) { S.set(Math.round(160 + Math.sin(am) * r), Math.round(90 - Math.cos(am) * r), CH[3]); S.set(Math.round(161 + Math.sin(am) * r), Math.round(90 - Math.cos(am) * r), CH[2]); }
-  // time: the minute hand walks up to 12 past, holds one beat, and goes past
-  const u = (t - (c.pass - 2.2)), hold = u > 2.2 && u < 2.7;
-  const minute = hold ? 12 : u < 2.2 ? 12 - (2.2 - u) * 0.6 : 12 + (u - 2.7) * 0.6;
-  const hour = 7 + minute / 60;
-  const hand = (a, len, w, c) => { for (let r = 0; r < len; r++) for (let d = -w; d <= w; d++) S.set(Math.round(160 + Math.sin(a) * r + Math.cos(a) * d), Math.round(90 - Math.cos(a) * r + Math.sin(a) * d), c); };
-  hand((hour % 12) / 12 * Math.PI * 2, 34, 2, INK[0]); hand(minute / 60 * Math.PI * 2, 52, 1, INK[1]); S.ellipse(160, 90, 4, 4, BR[4]);
-}
-function drawCandleInsert(S, t) {
-  const W = RMP('A.counter', '#8c4a30', 7, { lo: 0.22, hi: 0.72, at: 3, cool: 330, shift: 0.25 });
-  S.rect(0, 0, 320, 120, RMP('A.wall', '#a4805c', 7, { lo: 0.3, hi: 0.78, at: 3, cool: 300, shift: 0.22 })[1]); S.rect(0, 120, 320, 60, W[4]); S.hline(0, 319, 120, W[5]);
-  const C = RMP('shop.candle', '#efe6cf', 5, { lo: 0.55, hi: 0.97 }), BR = RMP('shop.brass', '#c79a45', 6, { cool: 20, shift: 0.3 });
-  S.ellipse(160, 132, 40, 8, BR[2]); S.ellipse(160, 130, 34, 6, BR[4]);
-  S.rect(148, 90, 24, 40, C[3]); S.vline(148, 90, 129, C[4]); S.vline(171, 90, 129, C[1]); S.ellipse(160, 90, 12, 3, C[4]);
-  S.rect(155, 92, 4, 14, C[4]); S.rect(166, 92, 3, 22, C[2]);
-  S.vline(160, 80, 89, INK[0]);
-  const f = Math.floor(t * 10) % 3, FL = RMP('shop.flame', '#f08a2a', 4);
-  S.ellipse(160 + (f - 1), 70, 5, 11, FL[1]); S.ellipse(160, 73, 3, 7, FL[2]); S.ellipse(160, 75, 2, 3, FL[3]);
-  // his hands, folded on the counter, a little further back
-  const skin = keeperA.mats[keeperA.M.skin].ramp, sl = keeperA.mats[keeperA.M.sleeve].ramp;
-  S.ellipse(250, 128, 30, 10, sl[2]); S.ellipse(232, 124, 14, 8, skin[3]); S.ellipse(244, 122, 12, 7, skin[4]);
+  windowInsert(S, o);
 }
 function drawPortrait(S, u) {
-  const W = RMP('A.wall', '#a4805c', 7, { lo: 0.3, hi: 0.78, at: 3, cool: 300, shift: 0.22 });
-  for (let y = 0; y < 180; y++) for (let x = 0; x < 320; x++) S.set(x, y, W[(x % 36 === 0) ? 1 : 2]);
+  wallBackdrop(S);
   const smile = ease(clamp((u - 0.25) / 0.5, 0, 1));
   const D = keeperA, headY = D.hipH + D.waistUp + D.chestUp + D.neckUp + D.headUp;
   const face = smile > 0.5 ? { eyes: 'happy', stache: 0.7 * smile, mouth: { curve: 0.6 } } : { stache: 0.3 * smile, brow: 0.2 };
@@ -600,9 +538,11 @@ function drawCredits(S, u) {
   for (const [s, c] of lines) { if (s) text(S, s, 110, y, UIc[c], { align: 'center' }); y += 15; }
   // outtakes window on the right
   win(S, 214, 50, 98, 70);
-  const k = Math.floor(u * 8) % 4, d = ['fire', 'cliff', 'slime', 'flash'][k];
+  const k = Math.floor(u * 8) % 4, d = ['fire', 'cliff', 'slime', 'flash'][k], uu = (u * 8) % 1;
   const sub = new Surface(90, 62); sub.clear(0);
-  drawOutside(sub, 0, 0, 90, 62, { hour: 7.5, t: u * 20, zoom: 1.1, towerFlash: (u * 8) % 1 > 0.6 ? 1 : 0 });
+  const [dx, dy] = pathAt(DEATH_U[d]), ox = Math.round(clamp(dx - 45, 0, 230)), oy = Math.round(clamp(dy - 40, 0, 118));
+  const dt = (uu - 0.5) * (T.credits.t1 - T.coda.t1) / 8;
+  drawView(sub, -ox, -oy, 320, 180, { hour: 7.5, t: 100 + uu * 4, lod: 'insert', hero: { u: clamp(uu / 0.5, 0, 1), death: d, dt, t: u * 30, from: DEATH_U[d] - 0.1 }, eye: d === 'flash' && dt >= 0 && dt < 0.3 ? 1 : 0 });
   S.draw(sub, 218, 54);
 }
 
@@ -611,7 +551,7 @@ function notes(S, st, t) {
   S.rect(320, 0, 64, 216, UIc[1]); S.rect(0, 180, 320, 36, UIc[1]);
   S.vline(320, 0, 215, UIc[3]); S.hline(0, 319, 180, UIc[3]);
   const idx = TL.SHOTS.indexOf(st.shot) + 1;
-  const kindName = { W: '全景', window: '窗', tally: '记号', tag: '价签', clock: '钟', candle: '蜡烛', portrait: '头像', black: '黑场', credits: '字幕' }[st.shot.kind] || st.shot.kind;
+  const kindName = { W: '全景', window: '窗', tally: '记号', tag: '价签', clock: '钟', candle: '蜡烛', portrait: '头像', black: '黑场', credits: '字幕', receipt: '收据', map: '地图', push: '柜台' }[st.shot.kind] || st.shot.kind;
   text(S, `#${String(idx).padStart(2, '0')} ${kindName}`, 4, 183, UIc[6]);
   const note = st.shot.note || '';
   text(S, note.length > 25 ? note.slice(0, 25) : note, 60, 183, UIc[5]);
@@ -637,7 +577,7 @@ function notes(S, st, t) {
   S.rect(331, 169 - h, 8, h, ten > 7 ? UIc[7] : UIc[6]);
   text(S, '张力', 344, 60, UIc[4]); text(S, ten.toFixed(1), 344, 74, UIc[5]);
 }
-function fourTone(rgb, u, t) {
+function fourTone(rgb, u, t, keep) {
   // fade to four warm greys, rows jittering like a tape rewinding
   const pal = [[34, 30, 36], [92, 84, 86], [168, 156, 146], [232, 222, 206]];
   const out = new Uint8Array(rgb.length);
@@ -648,6 +588,7 @@ function fourTone(rgb, u, t) {
       const l = (rgb[i] * 0.3 + rgb[i + 1] * 0.59 + rgb[i + 2] * 0.11) / 255;
       const q = Math.min(3, Math.floor(l * 4 + (bayer(x, y) - 0.5) * 0.5));
       const m = Math.min(1, u * 5);             // fades in fast
+      if (keep && keep.id[y * 320 + x] === CHALK_ID) { for (let c = 0; c < 3; c++) out[o + c] = rgb[o + c]; continue; }   // the chalk doesn't rewind
       for (let c = 0; c < 3; c++) out[o + c] = Math.round(rgb[i + c] * (1 - m) + pal[Math.max(0, q)][c] * m);
     }
   }
@@ -670,7 +611,9 @@ export function frameRGB(t) {
     const sv = Sv.toRGB({ bg: [-1, -1, -1] });
     for (let i = 0; i < 320 * 180; i++) if (Sv.px[i] >= 0) for (let c = 0; c < 3; c++) rgb[i * 3 + c] = sv[i * 3 + c];
   }
-  if (st.fx.rewind != null) rgb = fourTone(rgb, st.fx.rewind, t);
+  if (st.fx.rewind != null) rgb = fourTone(rgb, st.fx.rewind, t, st.fx.keepChalk ? S : null);
+  // 7:12: the rewind starts — flickers — and doesn't happen
+  if (st.fx.glitch != null && st.fx.glitch < 0.9 && Math.floor(t * 16) % 3 !== 2) rgb = fourTone(rgb, 0.12 + 0.1 * st.fx.glitch, t);
   if (black) {
     rgb.fill(0);
     if (st.ui && st.ui.save) { const Sv = new Surface(320, 180); saveIcon(Sv, 308, 164, st.ui.save.phase % 1, st.ui.save.done); const sv = Sv.toRGB({ bg: [0, 0, 0] }); rgb = sv; }

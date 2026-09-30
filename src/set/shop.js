@@ -7,6 +7,7 @@
 import { Surface, NOLIGHT, EMIT, bayer } from '../pix/gfx.js';
 import { R, RX, rnd, P, K, FLOOR, planks, bevel, tag, bottle, books, scroll, digits } from './kit.js';
 import { drawOutside } from './outside.js';
+import { drawView } from './view.js';
 import { lightPoly, lightRadial } from './light.js';
 
 // ------------------------------------------------------------------ palettes per design option
@@ -385,7 +386,7 @@ function clock(S, pal, opt, hour, t) {
 
 function windowView(S, pal, opt, hour, t, o) {
   const W = LAYOUT.window;
-  const info = drawOutside(S, W.x, W.y, W.w, W.h, { hour, t, zoom: 1, towerFlash: o.towerFlash });
+  drawView(S, W.x, W.y, W.w, W.h, { hour, t, lod: 'small', eye: o.towerFlash ? 1 : 0, battle: o.battle, defeated: o.defeated });
   // frame, mullions, sill
   const f = opt === 'B' ? pal.trim : pal.beam;
   bevel(S, W.x - 4, W.y - 4, W.w + 8, 4, f, 3);
@@ -427,7 +428,6 @@ function windowView(S, pal, opt, hour, t, o) {
   }
   S.rect(W.x - 14, W.y - 8, W.w + 28, 2, pal.iron[2]); S.hline(W.x - 14, W.x + W.w + 13, W.y - 8, pal.iron[4]);
   S.ellipse(W.x - 15, W.y - 7, 2, 2, pal.brass[3]); S.ellipse(W.x + W.w + 14, W.y - 7, 2, 2, pal.brass[3]);
-  return info;
 }
 
 function wallItems(S, pal, opt, t) {

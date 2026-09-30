@@ -15,6 +15,9 @@ export const PROP_MATS = {
   gold:    () => material('prop.gold', '#f0c040', { spec: 5, specTh: 0.8, r: { cool: 30, shift: 0.3 } }),
   chalk:   () => material('prop.chalk', '#f4f1ea', {}),
   paper:   () => material('prop.paper', '#efe3c4', { edge: true }),
+  pencilR: () => material('prop.pencilR', '#c8423a', { edge: true, r: { cool: 330 } }),
+  pencilB: () => material('prop.pencilB', '#3f68c2', { edge: true }),
+  lead:    () => material('prop.lead', '#e8d2a8', { edge: true }),
 };
 
 /** append prop materials to a figure's material table (once) */
@@ -27,7 +30,7 @@ export function withProps(D) {
 
 /**
  * Add a prop held in hand `a` (skeleton arm with .F = [thumb, fingers, back] frame and .palmC).
- * kind: 'sword' | 'cup' | 'rag' | 'pouch' | 'chalk' | 'receipt'
+ * kind: 'sword' | 'cup' | 'rag' | 'pouch' | 'chalk' | 'pencil' (a red-and-blue pencil; o.end 'R'|'B' = which end writes)
  */
 export function holdProp(fig, D, a, kind, o = {}) {
   const P = D.P, F = a.F, g = fig.group('prop_' + kind + a.s, null);
@@ -73,6 +76,15 @@ export function holdProp(fig, D, a, kind, o = {}) {
     fig.add(ell(add(c, [0, -1.4, 0]), frame([0, 1, 0]), [2.3, 2.2, 2.1], { g, m: P.pouch, k: 0.4, part: 66 }));
     fig.add(cone(add(c, [0, 0.6, 0]), add(c, [0, 1.6, 0]), 0.9, 1.3, { g, m: P.pouch, k: 0.5, part: 66 }));
     return {};
+  }
+  if (kind === 'pencil') {
+    // the writing end's half is its colour (the keeper turns the pencil round between colours)
+    const e = norm(add(Y, mul(X, 0.3))), blue = o.end === 'B';
+    const a0 = madd(grip, e, -3.4), m = madd(grip, e, 0.4), a1 = madd(grip, e, 2.6), tip = madd(grip, e, 3.4);
+    fig.add(cone(a0, m, 0.32, 0.32, { g, m: blue ? P.pencilR : P.pencilB, k: 0, part: 68 }));
+    fig.add(cone(m, a1, 0.32, 0.32, { g, m: blue ? P.pencilB : P.pencilR, k: 0, part: 68 }));
+    fig.add(cone(a1, tip, 0.3, 0.06, { g, m: P.lead, k: 0, part: 68 }));
+    return { tip };
   }
   if (kind === 'chalk') {
     const d = norm(add(Y, mul(X, 0.3)));

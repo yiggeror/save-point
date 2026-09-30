@@ -102,6 +102,7 @@ SOUNDS = {
     'saveTick': (lambda e: sfx.save_tick(), 0.5, 0.8), 'mapRow': (lambda e: sfx.map_row(e['i']), 0.0, 0.8),
     'rewindWhoosh': (lambda e: sfx.whoosh(0.3, True), 0.0, 0.6), 'boing': (lambda e: sfx.boing(), 0.3, 0.8), 'gridFlash': (lambda e: sfx.grid_flash(), 0.3, 0.8),
     'potionClink': (lambda e: sfx.tap(2600), 0.2, 0.6), 'scribble': (lambda e: sfx.scribble(), 0.3, 0.6),
+    'rewindAbort': (lambda e: sfx.whoosh(0.45, True), 0.0, 0.7),
     'deathFx': (lambda e: sfx.death_fx(e.get('death')), 0.0, 0.6), 'benchSit': (lambda e: sfx.creak(), -0.5, 0.8), 'pour': (lambda e: sfx.pour(e.get('dur', 2.6)), 0.4, 0.7),
     'shatter': (lambda e: sfx.shatter(), 0.1, 0.9), 'cupSet': (lambda e: sfx.tap(1500), -0.4, 0.6), 'gulp': (lambda e: sfx.gulp(), -0.4, 0.8), 'hot': (lambda e: sfx.hot(), -0.4, 0.8),
     'itemSet': (lambda e: sfx.thunk() * 0.4, -0.4, 0.8), 'paper': (lambda e: sfx.paper(), -0.4, 0.7), 'clockPass': (lambda e: sfx.tick(0) * 1.6, -0.3, 0.8),
